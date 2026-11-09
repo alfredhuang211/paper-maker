@@ -212,6 +212,7 @@ GitHub Actions
 ### 7.2 当前状态（M0）
 
 - 仓库尚无构建产物，`index.html` 是**占位页**，通过「分支发布（main / 根目录）」展示；
+- 当前线上地址：<https://alfredhuang211.github.io/paper-maker/>（已部署，HTTP 200）；
 - M1 引入 Vite 后，切换为 Actions artifact 发布（占位页由构建产物替换）。
 
 ### 7.3 Pages 限制（需遵守）
@@ -224,6 +225,25 @@ GitHub Actions
 | 分支发布构建频率（软限制） | 10 次/小时（Actions 发布不受此限） |
 
 > 来源：<https://docs.github.com/zh/pages/getting-started-with-github-pages/github-pages-limits>
+
+### 7.4 域名策略（已定 · 2026-11-09）
+
+| 阶段 | 域名 | 说明 |
+| --- | --- | --- |
+| 当前（M0–M1） | `https://alfredhuang211.github.io/paper-maker/` | 使用 GitHub Pages 默认项目地址，暂不配置自定义域名 |
+| 后续（M2 之后任意时点） | 自有域名的子域（如 `papermaker.<维护者域名>`） | 维护者提供域名与 DNS 控制权后切换；详见下方清单 |
+
+**后续切换自有子域清单**
+
+1. 在仓库 Settings → Pages 填写 Custom domain，并完成域名验证（TXT 记录）；
+2. 在 DNS 服务商为子域添加 `CNAME` → `alfredhuang211.github.io`（**不要**带仓库名）；若使用 Cloudflare，建议先设为 DNS only（灰云）；
+3. 分支发布时 GitHub 会自动在发布分支根目录提交 `CNAME` 文件，本地先 `git pull`；改用 Actions 发布后无需 `CNAME` 文件；
+4. Vite `base` 从 `/paper-maker/` 改为 `/`，并同步更新 README、文档与分享链接中的地址；
+5. 证书签发后启用 **Enforce HTTPS**，验证 `https://<子域>/`；
+6. 旧地址 `https://alfredhuang211.github.io/paper-maker/` 预期跳转到新域名（以实测为准）；
+7. 更新仓库 homepage 设置与文档中的线上地址。
+
+**约束**：GitHub Pages 不支持 `papermaker.alfredhuang211.github.io` 这类 `github.io` 二级子域（只有 `<owner>.github.io` 与 `<owner>.github.io/<repo>` 两种默认形态），自定义域名必须是维护者自有、可控 DNS 的域名。
 
 ---
 

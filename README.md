@@ -8,6 +8,7 @@
 > 当前产出为需求分析、PRD、功能规格、打印规范、技术方案与路线图；工程实现从 M1 开始。
 
 - 线上地址（占位页）：<https://alfredhuang211.github.io/paper-maker/>
+- 域名计划：当前使用 GitHub Pages 默认项目地址；后续将切换为维护者自有域名的子域（见[技术方案 · 域名策略](docs/05-architecture.md)）
 - 仓库：<https://github.com/alfredhuang211/paper-maker>
 
 ## 为什么做这个
