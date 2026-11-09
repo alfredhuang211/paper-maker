@@ -1,6 +1,6 @@
 # 05 · 技术方案（架构设计）
 
-> 版本：v0.2 · 状态：草案 · 日期：2026-11-09
+> 版本：v0.3 · 状态：草案 · 日期：2026-11-09
 > 本文是**方案设计**，不包含应用代码。技术选型在 M1 启动前可再确认（见 [PRD Q1–Q3](02-prd.md#132-待决策open-questions)）。
 
 ## 1. 约束与设计原则
@@ -70,7 +70,8 @@
 | 语言 | TypeScript（strict） | 生成引擎参数多，类型约束降低错误 |
 | UI | React 18/19 函数组件 | 生态成熟；SSR 不需要 |
 | 渲染 | **SVG 优先**，表格/文字用 DOM | 矢量、打印清晰、可精确 mm 定位 |
-| 样式 | 原生 CSS + CSS 变量（或 CSS Modules） | 避免运行时样式开销；打印样式需完全可控 |
+| 样式 | 原生 CSS + CSS 变量（design tokens）+ CSS Modules | 全站统一 tokens；打印样式完全可控；禁止子应用私有控件样式 |
+| 组件 | 自研共享 UI 组件库（不引入重型组件库） | 一致性可控；七态统一；包体小 |
 | 状态 | URL 查询参数 + 组件状态；少量 localStorage | 无跨页复杂状态，避免引入 Redux |
 | 国际化 | 轻量自研 i18n（中/英文案表 + `navigator.languages` 检测 + localStorage） | 中英双语 P0；不引入 i18next 等重依赖 |
 | 路由 | HashRouter（或 History + 404 兜底） | GitHub Pages 无 rewrite，Hash 最稳 |
@@ -102,7 +103,7 @@ paper-maker/
 │   ├── app/                   # 路由、布局、全局样式
 │   │   ├── routes.tsx
 │   │   ├── layout/
-│   │   └── pages/             # 主页面、About、打印指南、Changelog
+│   │   └── pages/             # 主页面、About、打印指南、Changelog、styleguide（开发）
 │   ├── core/                  # 与框架无关的核心
 │   │   ├── random/            # 种子 PRNG、洗牌、采样
 │   │   ├── geometry/          # 点/线/多边形/闭合检测
@@ -113,9 +114,9 @@ paper-maker/
 │   │   ├── coloring/          # engine + renderer + params + presets
 │   │   ├── math/              # engine（题型/约束/求值器）+ renderer
 │   │   └── schulte/           # engine + renderer
-│   ├── components/            # 通用 UI（参数控件、A4 预览、工具卡片）
+│   ├── components/            # 通用 UI：ui/（共享控件）、pattern/（语言切换、预览、打印操作）
 │   ├── i18n/                  # 中英文案表与语言状态（P0）
-│   └── styles/                # 全局、打印、主题
+│   └── styles/                # 全局样式、design tokens、打印样式
 ├── tests/
 │   ├── unit/                  # 引擎单测
 │   └── e2e/                   # Playwright（生成→打印 PDF→视觉回归）
@@ -186,6 +187,15 @@ paper-maker/
 - 日期/数字格式统一由 i18n 层格式化（`Intl.DateTimeFormat`）；
 - 禁止在组件或引擎中硬编码文案；CI 校验中英文键集合一致，缺失 key 在开发环境直接报错；
 - 测试：两语言快照 + 缺失 key 检查 + 英文长文案版式溢出检查。
+
+### 5.7 设计系统与响应式实现
+
+- **tokens 单一来源**：`src/styles/tokens.css` 定义色彩/字体/间距/圆角/阴影/动效；组件与页面只引用 `var(--...)`，禁止硬编码；
+- **共享组件库**：`src/components/ui/` 提供全部表单与操作控件；子应用禁止复制或覆盖控件样式，只允许通过 props 选择尺寸变体；
+- **样式边界**：子应用可自定义的只有「内容渲染样式」（SVG 线稿、网格、A4 纸张）与参数区布局组合；页面骨架、留白、控件外观由 `ToolLayout` 等共享布局组件统一提供；
+- **响应式实现**：mobile-first 媒体查询（断点 640 / 1024 / 1440）；使用 CSS Grid/Flex 重排，不使用 JS 监听窗口宽度做布局；预览用 `transform: scale()` 适配容器；打印使用独立 `@media print`，与断点解耦；
+- **一致性检查**：stylelint 规则禁止 token 之外的颜色/间距、禁止 `!important` 覆盖共享组件；`/styleguide` 展示全部组件七态；Playwright 在 360/768/1440 × 中英下截图回归；
+- **性能**：tokens 用一个 CSS 文件，组件按路由与使用情况拆分，避免为一致性引入重型组件库。
 
 ---
 
@@ -269,6 +279,8 @@ GitHub Actions
 | 快照测试 | 固定种子 → 页面模型快照；改动需显式更新 | 快照差异需评审 |
 | 国际化 | 中英文快照 + 缺失 key 检查 + 英文长文案版式检查 | 两语言 0 缺失文案、0 溢出 |
 | 打印回归 | Playwright 生成页面 → 打印 PDF → 与基准 PDF 比对版式 | 允许像素差阈值 |
+| 视觉回归 | Playwright 截图：360/768/1440 × 中英 × 主页面/子应用/组件示例 | 差异需评审；无横向滚动 |
+| 设计一致性 | stylelint（禁止 tokens 之外样式）+ 组件使用检查 | 子应用 0 处私有控件样式 |
 | 视觉检查 | 三工具各 5 组参数，人工看样张 | 打印验收清单通过 |
 | 性能 | Lighthouse CI | Perf/A11y/BP ≥ 90 |
 | 兼容 | 多浏览器手测 + Playwright 矩阵 | 最近 2 个大版本 |
@@ -313,9 +325,11 @@ GitHub Actions
 4. 注册工具元数据（主页面卡片、路由、SEO）；
 5. 补充单测（约束、种子复现、边界）与快照；
 6. 补充打印验收（至少 5 组参数样张）；
-7. 更新 README、文档索引、Changelog。
+7. 使用共享组件与 design tokens，不新增私有控件样式；
+8. 通过 360/768/1440 × 中英文视觉回归与自适应检查；
+9. 更新 README、文档索引、Changelog。
 
-**评估标准**：新工具是否复用 ≥ 80% 通用能力；是否引入新的外部依赖；打印版式是否通过验收。
+**评估标准**：新工具是否复用 ≥ 80% 通用能力；是否引入新的外部依赖；打印版式、视觉一致性与响应式是否通过验收。
 
 ---
 
