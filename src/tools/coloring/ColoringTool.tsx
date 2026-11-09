@@ -6,11 +6,14 @@ import { SwitchField } from '../../components/ui/SwitchField';
 import { TextField } from '../../components/ui/TextField';
 import { ToolIntro } from '../../components/pattern/AppChrome';
 import { SeedSettings } from '../../components/pattern/SeedSettings';
+import { BatchSettings } from '../../components/pattern/BatchSettings';
+import { sheetSeed, type BatchMode } from '../../core/batch';
 import { PaperList } from '../../components/pattern/PaperFrame';
 import { SheetFooter } from '../../components/pattern/SheetParts';
 import { ToolActions } from '../../components/pattern/ToolActions';
 import {
   generateColoring,
+  type ColoringModel,
   type ColoringTheme,
   type LineWeight,
 } from './engine';
@@ -24,15 +27,25 @@ export function ColoringTool() {
   const [title, setTitle] = useState('');
   const [showName, setShowName] = useState(true);
   const [showDate, setShowDate] = useState(false);
+  const [sheets, setSheets] = useState(1);
+  const [batchMode, setBatchMode] = useState<BatchMode>('different');
 
-  const model = useMemo(
-    () => generateColoring({ theme, complexity, lineWeight, seed }),
-    [theme, complexity, lineWeight, seed],
+  const models = useMemo(
+    () =>
+      Array.from({ length: sheets }, (_, index) =>
+        generateColoring({
+          theme,
+          complexity,
+          lineWeight,
+          seed: sheetSeed(seed, index, batchMode),
+        }),
+      ),
+    [theme, complexity, lineWeight, seed, sheets, batchMode],
   );
 
   const titleText = title.trim() || t('coloring.titleDefault');
 
-  const sheet = (
+  const renderSheet = (model: ColoringModel, index: number) => (
     <div className="sheet">
       <div className="sheet-inner">
         <div className="sheet-header">
@@ -76,7 +89,7 @@ export function ColoringTool() {
           </svg>
         </div>
 
-        <SheetFooter seed={seed} />
+        <SheetFooter seed={sheetSeed(seed, index, batchMode)} />
       </div>
     </div>
   );
@@ -146,6 +159,12 @@ export function ColoringTool() {
               <p className="action-note">{t('coloring.hint')}</p>
             </div>
 
+            <BatchSettings
+              sheets={sheets}
+              onSheetsChange={setSheets}
+              mode={batchMode}
+              onModeChange={setBatchMode}
+            />
             <SeedSettings seed={seed} onChange={setSeed} onRegenerate={regenerate} />
           </aside>
 
@@ -156,7 +175,7 @@ export function ColoringTool() {
               </span>
               <span>{t('common.previewNote')}</span>
             </div>
-            <PaperList sheets={[sheet]} />
+            <PaperList sheets={models.map((model, index) => renderSheet(model, index))} />
           </section>
 
           <aside className="actions-panel">

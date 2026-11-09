@@ -2,7 +2,7 @@ import { useI18n } from '../../i18n';
 import { useClipboard } from '../../hooks/useSeed';
 import { Button } from '../ui/Button';
 import { TextField } from '../ui/TextField';
-import { IconCheck, IconCopy, IconPrint, IconRefresh } from '../icons';
+import { IconCheck, IconCopy, IconDownload, IconPrint, IconRefresh } from '../icons';
 
 interface ToolActionsProps {
   seed: string;
@@ -27,6 +27,17 @@ export function ToolActions({ seed, onSeedChange, onRegenerate }: ToolActionsPro
       <Button variant="primary" block onClick={() => window.print()}>
         <IconPrint />
         {t('common.print')}
+      </Button>
+      <Button
+        variant="secondary"
+        block
+        className="pdf-button"
+        title={t('common.pdfHint')}
+        aria-label={t('common.downloadPdf')}
+        onClick={() => window.print()}
+      >
+        <IconDownload />
+        <span className="pdf-label">{t('common.downloadPdf')}</span>
       </Button>
       <Button variant="secondary" block onClick={onRegenerate}>
         <IconRefresh />
@@ -63,6 +74,7 @@ export function ToolActions({ seed, onSeedChange, onRegenerate }: ToolActionsPro
       </div>
 
       <p className="action-note">{t('common.printTip')}</p>
+      <p className="action-note">{t('common.pdfHint')}</p>
     </div>
   );
 }

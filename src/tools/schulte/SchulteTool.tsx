@@ -6,10 +6,12 @@ import { SwitchField } from '../../components/ui/SwitchField';
 import { TextField } from '../../components/ui/TextField';
 import { ToolIntro } from '../../components/pattern/AppChrome';
 import { SeedSettings } from '../../components/pattern/SeedSettings';
+import { BatchSettings } from '../../components/pattern/BatchSettings';
+import { sheetSeed, type BatchMode } from '../../core/batch';
 import { PaperList } from '../../components/pattern/PaperFrame';
 import { SheetFooter } from '../../components/pattern/SheetParts';
 import { ToolActions } from '../../components/pattern/ToolActions';
-import { generateSchulte, SCHULTE_SIZES, type SchulteSize } from './engine';
+import { generateSchulte, SCHULTE_SIZES, type SchulteModel, type SchulteSize } from './engine';
 
 export function SchulteTool() {
   const { t } = useI18n();
@@ -19,18 +21,27 @@ export function SchulteTool() {
   const [showInstructions, setShowInstructions] = useState(true);
   const [centerMark, setCenterMark] = useState(false);
   const [title, setTitle] = useState('');
+  const [sheets, setSheets] = useState(1);
+  const [batchMode, setBatchMode] = useState<BatchMode>('different');
 
-  const model = useMemo(() => generateSchulte({ size, seed }), [size, seed]);
+  const models = useMemo(
+    () =>
+      Array.from({ length: sheets }, (_, index) =>
+        generateSchulte({ size, seed: sheetSeed(seed, index, batchMode) }),
+      ),
+    [size, seed, sheets, batchMode],
+  );
   const cellMm = Math.min(180 / size, 52);
   const centerIndex = size % 2 === 1 ? Math.floor((size * size) / 2) : -1;
 
-  const gridStyle = {
-    '--n': model.size,
-    '--cell': `${cellMm.toFixed(2)}mm`,
-    '--cell-font': `${(cellMm * 0.42).toFixed(2)}mm`,
-  } as CSSProperties;
+  const renderSheet = (model: SchulteModel, index: number) => {
+    const gridStyle = {
+      '--n': model.size,
+      '--cell': `${cellMm.toFixed(2)}mm`,
+      '--cell-font': `${(cellMm * 0.42).toFixed(2)}mm`,
+    } as CSSProperties;
 
-  const sheet = (
+    return (
     <div className="sheet">
       <div className="sheet-inner">
         <div className="sheet-header">
@@ -73,10 +84,11 @@ export function SchulteTool() {
         {showInstructions ? (
           <div className="schulte-instructions">{t('schulte.instructions')}</div>
         ) : null}
-        <SheetFooter seed={seed} />
+        <SheetFooter seed={sheetSeed(seed, index, batchMode)} />
       </div>
     </div>
-  );
+    );
+  };
 
   return (
     <div className="tool-page">
@@ -132,6 +144,12 @@ export function SchulteTool() {
               <p className="action-note">{t('schulte.hint')}</p>
             </div>
 
+            <BatchSettings
+              sheets={sheets}
+              onSheetsChange={setSheets}
+              mode={batchMode}
+              onModeChange={setBatchMode}
+            />
             <SeedSettings seed={seed} onChange={setSeed} onRegenerate={regenerate} />
           </aside>
 
@@ -142,7 +160,7 @@ export function SchulteTool() {
               </span>
               <span>{t('common.previewNote')}</span>
             </div>
-            <PaperList sheets={[sheet]} />
+            <PaperList sheets={models.map((model, index) => renderSheet(model, index))} />
           </section>
 
           <aside className="actions-panel">

@@ -9,6 +9,8 @@ import { SwitchField } from '../../components/ui/SwitchField';
 import { TextField } from '../../components/ui/TextField';
 import { ToolIntro } from '../../components/pattern/AppChrome';
 import { SeedSettings } from '../../components/pattern/SeedSettings';
+import { BatchSettings } from '../../components/pattern/BatchSettings';
+import { sheetSeed, type BatchMode } from '../../core/batch';
 import { PaperList } from '../../components/pattern/PaperFrame';
 import { SheetFooter } from '../../components/pattern/SheetParts';
 import { ToolActions } from '../../components/pattern/ToolActions';
@@ -16,6 +18,7 @@ import {
   generateMathWorksheet,
   questionText,
   type CarryMode,
+  type MathModel,
   type MathOp,
   type MathParams,
 } from './engine';
@@ -78,23 +81,41 @@ export function MathTool() {
   const [showName, setShowName] = useState(true);
   const [showDate, setShowDate] = useState(true);
   const [title, setTitle] = useState('');
+  const [sheets, setSheets] = useState(1);
+  const [batchMode, setBatchMode] = useState<BatchMode>('different');
 
-  const model = useMemo(
+  const models = useMemo(
     () =>
-      generateMathWorksheet({
-        ops,
-        range,
-        carry,
-        count,
-        columns,
-        fontSize,
-        showAnswers,
-        title,
-        showName,
-        showDate,
-        seed,
-      }),
-    [ops, range, carry, count, columns, fontSize, showAnswers, title, showName, showDate, seed],
+      Array.from({ length: sheets }, (_, index) =>
+        generateMathWorksheet({
+          ops,
+          range,
+          carry,
+          count,
+          columns,
+          fontSize,
+          showAnswers,
+          title,
+          showName,
+          showDate,
+          seed: sheetSeed(seed, index, batchMode),
+        }),
+      ),
+    [
+      ops,
+      range,
+      carry,
+      count,
+      columns,
+      fontSize,
+      showAnswers,
+      title,
+      showName,
+      showDate,
+      seed,
+      sheets,
+      batchMode,
+    ],
   );
 
   const toggleOp = (op: MathOp) => {
@@ -150,7 +171,7 @@ export function MathTool() {
     '--blank-width': blankWidth,
   } as CSSProperties;
 
-  const worksheet = (
+  const renderWorksheet = (model: MathModel, index: number) => (
     <div className="sheet">
       <div className="sheet-inner">
         <div className="sheet-header">
@@ -183,12 +204,12 @@ export function MathTool() {
           ))}
         </div>
 
-        <SheetFooter seed={seed} />
+        <SheetFooter seed={sheetSeed(seed, index, batchMode)} />
       </div>
     </div>
   );
 
-  const answerSheet = (
+  const renderAnswerSheet = (model: MathModel, index: number) => (
     <div className="sheet">
       <div className="sheet-inner">
         <div className="sheet-header">
@@ -206,9 +227,15 @@ export function MathTool() {
             </span>
           ))}
         </div>
-        <SheetFooter seed={seed} />
+        <SheetFooter seed={sheetSeed(seed, index, batchMode)} />
       </div>
     </div>
+  );
+
+  const renderedSheets = models.flatMap((model, index) =>
+    showAnswers
+      ? [renderWorksheet(model, index), renderAnswerSheet(model, index)]
+      : [renderWorksheet(model, index)],
   );
 
   return (
@@ -329,11 +356,19 @@ export function MathTool() {
                 placeholder={t('math.titleDefault')}
                 onChange={setTitle}
               />
-              {model.warning ? <p className="warning">{t('math.warning.duplicates')}</p> : null}
+              {models.some((model) => model.warning) ? (
+                <p className="warning">{t('math.warning.duplicates')}</p>
+              ) : null}
               {layoutAdjusted ? <p className="action-note">{t('math.layoutAdjusted')}</p> : null}
               <p className="action-note">{t('math.hint')}</p>
             </div>
 
+            <BatchSettings
+              sheets={sheets}
+              onSheetsChange={setSheets}
+              mode={batchMode}
+              onModeChange={setBatchMode}
+            />
             <SeedSettings seed={seed} onChange={setSeed} onRegenerate={regenerate} />
           </aside>
 
@@ -344,7 +379,7 @@ export function MathTool() {
               </span>
               <span>{t('common.previewNote')}</span>
             </div>
-            <PaperList sheets={showAnswers ? [worksheet, answerSheet] : [worksheet]} />
+            <PaperList sheets={renderedSheets} />
           </section>
 
           <aside className="actions-panel">
