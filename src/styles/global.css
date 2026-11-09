@@ -1157,6 +1157,39 @@ svg {
     display: none;
   }
 
+  .btn {
+    min-height: 44px;
+  }
+
+  .icon-button {
+    width: 44px;
+    height: 44px;
+  }
+
+  .select,
+  .text-input {
+    height: 44px;
+    font-size: 16px;
+  }
+
+  .segmented button {
+    min-height: 44px;
+  }
+
+  .switch {
+    min-height: 44px;
+  }
+
+  .chip {
+    min-height: 44px;
+    padding: 8px 12px;
+  }
+
+  .lang-switch button {
+    min-height: 40px;
+    padding: 8px 10px;
+  }
+
   .home {
     padding: var(--space-6) 0 var(--space-8);
   }

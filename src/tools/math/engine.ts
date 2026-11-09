@@ -74,7 +74,7 @@ function makeQuestion(
       if (sum > range) continue;
       if (effectiveCarry === 'require' && !hasCarry(a, b)) continue;
       if (effectiveCarry === 'avoid' && hasCarry(a, b)) continue;
-      if (a === 0 && b === 0) continue;
+      if (a === 0 || b === 0) continue;
       return { a, b, op, answer: sum };
     }
 
@@ -82,7 +82,7 @@ function makeQuestion(
       let a = rng.int(0, max);
       let b = rng.int(0, max);
       if (a < b) [a, b] = [b, a];
-      if (a === b && (a === 0 || attempt < 10)) continue;
+      if (a === b || b === 0) continue;
       if (effectiveCarry === 'require' && !hasBorrow(a, b)) continue;
       if (effectiveCarry === 'avoid' && hasBorrow(a, b)) continue;
       return { a, b, op, answer: a - b };
@@ -94,7 +94,7 @@ function makeQuestion(
       const b = rng.int(1, factorMax);
       const product = a * b;
       if (product > range) continue;
-      if (a === 1 && b === 1) continue;
+      if (a === 1 || b === 1) continue;
       return { a, b, op, answer: product };
     }
 

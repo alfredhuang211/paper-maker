@@ -221,9 +221,8 @@ push main
    │
    ▼
 GitHub Actions
-   ├─ pnpm install --frozen-lockfile
-   ├─ pnpm lint && pnpm test
-   ├─ pnpm build（输出 dist/）
+   ├─ npm ci
+   ├─ npm test && npm run build（输出 dist/）
    ├─ actions/upload-pages-artifact
    └─ actions/deploy-pages → https://alfredhuang211.github.io/paper-maker/
 ```
@@ -312,7 +311,7 @@ GitHub Actions
 - 不设置追踪 Cookie；localStorage 仅存用户预设与最近参数，提供清除入口；
 - 分享链接可能包含用户输入的标题/姓名，提示用户注意；不上传；
 - 安全：不把用户输入拼进 `innerHTML`；CSP 允许内联样式（打印需要）但限制外链；
-- 依赖：锁定版本、定期 `pnpm audit`；不引入来源不明的生成库。
+- 依赖：锁定版本、定期 `npm audit`；不引入来源不明的生成库。
 
 ---
 
