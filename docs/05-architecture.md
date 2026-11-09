@@ -1,6 +1,6 @@
 # 05 · 技术方案（架构设计）
 
-> 版本：v0.1 · 状态：草案 · 日期：2026-11-09
+> 版本：v0.2 · 状态：草案 · 日期：2026-11-09
 > 本文是**方案设计**，不包含应用代码。技术选型在 M1 启动前可再确认（见 [PRD Q1–Q3](02-prd.md#132-待决策open-questions)）。
 
 ## 1. 约束与设计原则
@@ -72,6 +72,7 @@
 | 渲染 | **SVG 优先**，表格/文字用 DOM | 矢量、打印清晰、可精确 mm 定位 |
 | 样式 | 原生 CSS + CSS 变量（或 CSS Modules） | 避免运行时样式开销；打印样式需完全可控 |
 | 状态 | URL 查询参数 + 组件状态；少量 localStorage | 无跨页复杂状态，避免引入 Redux |
+| 国际化 | 轻量自研 i18n（中/英文案表 + `navigator.languages` 检测 + localStorage） | 中英双语 P0；不引入 i18next 等重依赖 |
 | 路由 | HashRouter（或 History + 404 兜底） | GitHub Pages 无 rewrite，Hash 最稳 |
 | 打印 | 原生 `window.print()` + `@page` | 矢量、零依赖、可另存 PDF |
 | PDF（P2） | 按需动态加载 `pdf-lib` | 不进入首屏包体 |
@@ -85,6 +86,7 @@
 - ❌ 服务端/SSR/数据库；
 - ❌ 第三方分析、广告、客服 SDK；
 - ❌ 大型 UI 框架（Ant Design/MUI 等）——表单简单，自研更可控；
+- ❌ 重型 i18n 框架（i18next 等）——只有中英两语言、无复杂复数规则，自研更轻；
 - ❌ html2canvas（栅格化，打印质量差）。
 
 ---
@@ -100,7 +102,7 @@ paper-maker/
 │   ├── app/                   # 路由、布局、全局样式
 │   │   ├── routes.tsx
 │   │   ├── layout/
-│   │   └── pages/             # 首页、About、打印指南、Changelog
+│   │   └── pages/             # 主页面、About、打印指南、Changelog
 │   ├── core/                  # 与框架无关的核心
 │   │   ├── random/            # 种子 PRNG、洗牌、采样
 │   │   ├── geometry/          # 点/线/多边形/闭合检测
@@ -112,7 +114,7 @@ paper-maker/
 │   │   ├── math/              # engine（题型/约束/求值器）+ renderer
 │   │   └── schulte/           # engine + renderer
 │   ├── components/            # 通用 UI（参数控件、A4 预览、工具卡片）
-│   ├── i18n/                  # 文案（P1）
+│   ├── i18n/                  # 中英文案表与语言状态（P0）
 │   └── styles/                # 全局、打印、主题
 ├── tests/
 │   ├── unit/                  # 引擎单测
@@ -133,14 +135,14 @@ paper-maker/
 | 字段 | 说明 |
 | --- | --- |
 | `id` / `slug` | 唯一标识与 URL |
-| `meta` | 名称、描述、图标、关键词（用于首页/SEO） |
+| `meta` | 名称、描述、图标、关键词（用于主页面/SEO） |
 | `params` | 参数 schema（类型、默认值、范围、说明、分组、是否影响内容/布局） |
 | `presets` | 预设参数组合 |
 | `generate(params, seed)` | 纯函数，返回页面模型 |
 | `render(model)` | 返回 React 节点/SVG |
 | `exportHints` | 打印提示、答案页策略 |
 
-新增工具时，核心框架（参数面板、预览、打印、种子、URL 同步）**自动复用**。
+新增工具时，核心框架（参数面板、预览、打印、种子、URL 同步）**自动复用**；主页面（`/`）由注册表自动生成子应用卡片列表，新增工具无需修改主页面。
 
 ### 5.2 随机与确定性
 
@@ -173,6 +175,17 @@ paper-maker/
 - 参数变化 → `history.replaceState` 更新 URL（防抖 300ms）；
 - 打开链接 → 解析参数 → 校验（越界回退默认）→ 恢复；
 - `seed` 单独处理，保证分享可复现。
+
+### 5.6 国际化与语言状态
+
+- 文案表：`src/i18n/zh-CN` 与 `src/i18n/en`，按命名空间组织（`common.*`、`tool.coloring.*`、`tool.math.*`、`tool.schulte.*`、`print.*`）；
+- 语言判定优先级：URL `lang`（P1）> localStorage 用户选择 > `navigator.languages` 依次匹配（`zh*` → zh-CN，`en*` → en）> 英文兜底；
+- 语言状态放在应用级 Context/Store，切换后全局重渲染；**不刷新页面、不重置工具参数与种子**；
+- 同步更新 `<html lang>`、`document.title` 与 meta description；
+- **打印内容与界面共用同一套文案表**（`print.*` 命名空间），保证纸面语言与界面一致；生成引擎只输出语言无关数据，文案由渲染层注入；
+- 日期/数字格式统一由 i18n 层格式化（`Intl.DateTimeFormat`）；
+- 禁止在组件或引擎中硬编码文案；CI 校验中英文键集合一致，缺失 key 在开发环境直接报错；
+- 测试：两语言快照 + 缺失 key 检查 + 英文长文案版式溢出检查。
 
 ---
 
@@ -254,6 +267,7 @@ GitHub Actions
 | 静态检查 | TypeScript strict、ESLint、Prettier | 0 error |
 | 单元测试 | 生成引擎、约束规则、种子复现、参数解析 | 引擎覆盖率 ≥ 90% |
 | 快照测试 | 固定种子 → 页面模型快照；改动需显式更新 | 快照差异需评审 |
+| 国际化 | 中英文快照 + 缺失 key 检查 + 英文长文案版式检查 | 两语言 0 缺失文案、0 溢出 |
 | 打印回归 | Playwright 生成页面 → 打印 PDF → 与基准 PDF 比对版式 | 允许像素差阈值 |
 | 视觉检查 | 三工具各 5 组参数，人工看样张 | 打印验收清单通过 |
 | 性能 | Lighthouse CI | Perf/A11y/BP ≥ 90 |
@@ -272,7 +286,7 @@ GitHub Actions
 | 首屏 LCP | ≤ 2.5 s（4G 中端机） |
 | 生成单页 | ≤ 200 ms |
 | 批量 20 页 | ≤ 2 s |
-| 字体 | 按需子集化，woff2；首屏仅加载 1 个字重 |
+| 字体 | 中文 Noto Sans SC 子集 + 英文 Inter / system-ui；woff2；首屏仅 1 个字重 |
 | 图片 | 尽量无位图；图标用内联 SVG |
 
 策略：路由级代码分割；生成引擎与渲染器同工具打包；pdf-lib 等可选依赖动态 `import()`。
@@ -296,7 +310,7 @@ GitHub Actions
 1. 在 `src/tools/<name>/` 定义参数 schema 与预设；
 2. 实现 `generate(params, seed)` 纯函数，输出页面模型；
 3. 实现渲染器（SVG/DOM），遵守 mm 布局；
-4. 注册工具元数据（首页卡片、路由、SEO）；
+4. 注册工具元数据（主页面卡片、路由、SEO）；
 5. 补充单测（约束、种子复现、边界）与快照；
 6. 补充打印验收（至少 5 组参数样张）；
 7. 更新 README、文档索引、Changelog。
