@@ -80,7 +80,7 @@
 | 测试 | Vitest + Playwright | 引擎单测 + 打印 PDF 视觉回归 |
 | 部署 | GitHub Actions → Pages artifact | 构建可控，不受分支发布构建频率软限制 |
 | 字体 | Noto Sans SC / 思源黑体（OFL） | 可商用、可自托管子集 |
-| 包管理 | pnpm | 快、磁盘友好 |
+| 包管理 | npm（Node.js 22+） | 与 GitHub Actions 默认缓存兼容，减少额外工具链 |
 
 ### 3.3 明确不引入
 
@@ -232,11 +232,12 @@ GitHub Actions
 - 环境：`github-pages`；
 - 并发控制：同一分支只保留最新部署。
 
-### 7.2 当前状态（M0）
+### 7.2 当前状态（M1/M2）
 
-- 仓库尚无构建产物，`index.html` 是**占位页**，通过「分支发布（main / 根目录）」展示；
-- 当前线上地址：<https://alfredhuang211.github.io/paper-maker/>（已部署，HTTP 200）；
-- M1 引入 Vite 后，切换为 Actions artifact 发布（占位页由构建产物替换）。
+- Vite + TypeScript + React 应用已实现；`npm run build` 产出 `dist/`；
+- 通过 [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) 构建、测试并使用 Actions artifact 发布；
+- 当前线上地址：<https://alfredhuang211.github.io/paper-maker/>（项目站点，`base: '/paper-maker/'`）；
+- 自定义域名尚未配置；未来切换时按 §7.4 执行。
 
 ### 7.3 Pages 限制（需遵守）
 
