@@ -24,24 +24,30 @@ export function ToolActions({ seed, onSeedChange, onRegenerate }: ToolActionsPro
 
   return (
     <div className="panel">
-      <Button variant="primary" block onClick={() => window.print()}>
-        <IconPrint />
-        {t('common.print')}
-      </Button>
+      <div className="action-pair">
+        <Button variant="primary" block onClick={() => window.print()}>
+          <IconPrint />
+          {t('common.print')}
+        </Button>
+        <Button
+          variant="primary"
+          block
+          title={t('common.pdfHint')}
+          aria-label={t('common.downloadPdf')}
+          onClick={() => window.print()}
+        >
+          <IconDownload />
+          {t('common.downloadPdf')}
+        </Button>
+      </div>
       <Button
         variant="secondary"
         block
-        className="pdf-button"
-        title={t('common.pdfHint')}
-        aria-label={t('common.downloadPdf')}
-        onClick={() => window.print()}
+        aria-label={t('common.regenerate')}
+        onClick={onRegenerate}
       >
-        <IconDownload />
-        <span className="pdf-label">{t('common.downloadPdf')}</span>
-      </Button>
-      <Button variant="secondary" block onClick={onRegenerate}>
         <IconRefresh />
-        {t('common.regenerate')}
+        <span className="regen-label">{t('common.regenerate')}</span>
       </Button>
 
       <div className="seed-field">
