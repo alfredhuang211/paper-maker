@@ -948,8 +948,20 @@ svg {
   border-bottom: 0.3mm solid #000000;
 }
 
-.math-question.is-expression {
-  grid-template-columns: 4mm minmax(0, 1fr) 3mm 10mm;
+.math-expression-operand {
+  white-space: nowrap;
+}
+
+.math-op {
+  margin: 0 1mm;
+}
+
+.math-inline-blank {
+  display: inline-block;
+  width: 8mm;
+  height: 1em;
+  vertical-align: baseline;
+  border-bottom: 0.3mm solid #000000;
 }
 
 .math-given {

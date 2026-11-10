@@ -11,6 +11,7 @@ const baseParams: MathParams = {
   range: 100,
   carry: true,
   borrow: true,
+  fillModes: ['answer'],
   count: 20,
   columns: 4,
   fontSize: 'md',
@@ -113,6 +114,19 @@ describe('math worksheet engine', () => {
     const model = generate({ ops, count: 40, range: 100 });
     const seen = new Set(model.questions.map((question) => question.op));
     expect(seen.size).toBeGreaterThan(1);
+  });
+
+  it('assigns the requested fill modes', () => {
+    const answerOnly = generate({ fillModes: ['answer'], count: 10 });
+    expect(answerOnly.questions.every((q) => q.fill === 'answer')).toBe(true);
+
+    const operandOnly = generate({ fillModes: ['operand'], count: 10 });
+    expect(operandOnly.questions.every((q) => q.fill === 'operand')).toBe(true);
+    expect(operandOnly.questions.every((q) => q.hidden === 'a' || q.hidden === 'b')).toBe(true);
+
+    const mixed = generate({ fillModes: ['answer', 'operand'], count: 40 });
+    expect(mixed.questions.some((q) => q.fill === 'answer')).toBe(true);
+    expect(mixed.questions.some((q) => q.fill === 'operand')).toBe(true);
   });
 
   it('supports both carrying and borrowing when both are checked', () => {

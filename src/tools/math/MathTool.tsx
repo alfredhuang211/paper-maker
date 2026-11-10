@@ -16,8 +16,10 @@ import { PaperList } from '../../components/pattern/PaperFrame';
 import { SheetFooter } from '../../components/pattern/SheetParts';
 import { ToolActions } from '../../components/pattern/ToolActions';
 import {
+  OP_SYMBOL,
   generateMathWorksheet,
   questionText,
+  type FillMode,
   type MathModel,
   type MathOp,
   type MathParams,
@@ -25,7 +27,6 @@ import {
 
 type FontSize = MathParams['fontSize'];
 type ConfigMode = 'preset' | 'custom';
-type FillMode = 'answer' | 'expression';
 
 const FONT_SIZE: Record<FontSize, string> = {
   sm: '10pt',
@@ -91,43 +92,48 @@ export function MathTool() {
   const [batchMode, setBatchMode] = useState<BatchMode>('different');
   const [configMode, setConfigMode] = useState<ConfigMode>('preset');
   const [presetKey, setPresetKey] = useState('g2');
-  const [fillMode, setFillMode] = useState<FillMode>('answer');
+  const [fillAnswer, setFillAnswer] = useState(true);
+  const [fillOperand, setFillOperand] = useState(false);
 
-  const models = useMemo(
-    () =>
-      Array.from({ length: sheets }, (_, index) =>
-        generateMathWorksheet({
-          ops,
-          range,
-          carry,
-          borrow,
-          count,
-          columns,
-          fontSize,
-          showAnswers,
-          title,
-          showName,
-          showDate,
-          seed: sheetSeed(seed, index, batchMode),
-        }),
-      ),
-    [
-      ops,
-      range,
-      carry,
-      borrow,
-      count,
-      columns,
-      fontSize,
-      showAnswers,
-      title,
-      showName,
-      showDate,
-      seed,
-      sheets,
-      batchMode,
-    ],
-  );
+  const models = useMemo(() => {
+    const fillModes: FillMode[] = [];
+    if (fillAnswer) fillModes.push('answer');
+    if (fillOperand) fillModes.push('operand');
+    return Array.from({ length: sheets }, (_, index) =>
+      generateMathWorksheet({
+        ops,
+        range,
+        carry,
+        borrow,
+        fillModes,
+        count,
+        columns,
+        fontSize,
+        showAnswers,
+        title,
+        showName,
+        showDate,
+        seed: sheetSeed(seed, index, batchMode),
+      }),
+    );
+  }, [
+    ops,
+    range,
+    carry,
+    borrow,
+    fillAnswer,
+    fillOperand,
+    count,
+    columns,
+    fontSize,
+    showAnswers,
+    title,
+    showName,
+    showDate,
+    seed,
+    sheets,
+    batchMode,
+  ]);
 
   const toggleOp = (op: MathOp) => {
     setOps((current) => {
@@ -136,6 +142,16 @@ export function MathTool() {
       }
       return [...current, op];
     });
+  };
+
+  const toggleFillAnswer = (checked: boolean) => {
+    if (!checked && !fillOperand) return;
+    setFillAnswer(checked);
+  };
+
+  const toggleFillOperand = (checked: boolean) => {
+    if (!checked && !fillAnswer) return;
+    setFillOperand(checked);
   };
 
   const applyPreset = (preset: (typeof PRESETS)[number]) => {
@@ -176,7 +192,7 @@ export function MathTool() {
   // Fit the requested number of questions on one A4 page: widen the grid and
   // shrink the type when the count is high. The selected values remain as the
   // user's preference, but the sheet always stays one page.
-  const maxColumns = fillMode === 'expression' ? 4 : 5;
+  const maxColumns = fillOperand ? 4 : 5;
   const effectiveColumns = Math.min(maxColumns, Math.max(columns, Math.ceil(count / 25)));
   const rows = Math.ceil(count / effectiveColumns);
   const selectedSize = FONT_SIZE[fontSize];
@@ -201,7 +217,7 @@ export function MathTool() {
   if (effectiveColumns === 4 && fontSize === 'xl') fitSize = '14pt';
   if (effectiveColumns >= 5) fitSize = rows > 15 ? '8pt' : '9pt';
 
-  const blankWidth = effectiveColumns >= 5 ? '11mm' : effectiveColumns === 4 ? '16mm' : '20mm';
+  const blankWidth = effectiveColumns >= 5 ? '11mm' : effectiveColumns === 4 ? '14mm' : '20mm';
   const layoutAdjusted = effectiveColumns !== columns || fitSize !== selectedSize;
 
   const questionStyle = {
@@ -236,21 +252,33 @@ export function MathTool() {
         <div className="math-questions" style={questionStyle}>
           {model.questions.map((question, index) => (
             <div
-              className={`math-question${fillMode === 'expression' ? ' is-expression' : ''}`}
+              className={`math-question${question.fill === 'operand' ? ' is-operand' : ''}`}
               key={`${index}-${question.a}-${question.b}-${question.op}`}
             >
               <span className="math-index">{index + 1}.</span>
-              {fillMode === 'answer' ? (
+              {question.fill === 'operand' ? (
+                <>
+                  <span className="math-expression math-expression-operand">
+                    {question.hidden === 'a' ? (
+                      <span className="math-inline-blank" />
+                    ) : (
+                      <span>{question.a}</span>
+                    )}
+                    <span className="math-op">{OP_SYMBOL[question.op]}</span>
+                    {question.hidden === 'b' ? (
+                      <span className="math-inline-blank" />
+                    ) : (
+                      <span>{question.b}</span>
+                    )}
+                  </span>
+                  <span className="math-equals">=</span>
+                  <span className="math-given">{question.answer}</span>
+                </>
+              ) : (
                 <>
                   <span className="math-expression">{questionText(question)}</span>
                   <span className="math-equals">=</span>
                   <span className="math-blank" />
-                </>
-              ) : (
-                <>
-                  <span className="math-blank" />
-                  <span className="math-equals">=</span>
-                  <span className="math-given">{question.answer}</span>
                 </>
               )}
             </div>
@@ -273,13 +301,13 @@ export function MathTool() {
         </div>
         <div
           className="math-answers"
-          style={{ '--cols': fillMode === 'expression' ? 4 : 6 } as CSSProperties}
+          style={{ '--cols': fillOperand ? 4 : 6 } as CSSProperties}
         >
           {model.questions.map((question, index) => (
             <span className="math-answer" key={`answer-${index}-${question.a}-${question.b}`}>
               <span className="math-index">{index + 1}.</span>
               <span>
-                {fillMode === 'expression'
+                {question.fill === 'operand'
                   ? `${questionText(question)} = ${question.answer}`
                   : question.answer}
               </span>
@@ -450,15 +478,18 @@ export function MathTool() {
             <div className="settings-group">
               <h2>{t('math.output')}</h2>
               <Field label={t('math.fillMode')} help={t('math.fillModeHint')}>
-                <SegmentedControl
-                  label={t('math.fillMode')}
-                  value={fillMode}
-                  options={[
-                    { value: 'answer', label: t('math.fillMode.answer') },
-                    { value: 'expression', label: t('math.fillMode.expression') },
-                  ]}
-                  onChange={(value) => setFillMode(value as FillMode)}
-                />
+                <div className="checkbox-row">
+                  <CheckboxField
+                    label={t('math.fillMode.answer')}
+                    checked={fillAnswer}
+                    onChange={toggleFillAnswer}
+                  />
+                  <CheckboxField
+                    label={t('math.fillMode.operand')}
+                    checked={fillOperand}
+                    onChange={toggleFillOperand}
+                  />
+                </div>
               </Field>
               <SwitchField
                 label={t('math.includeAnswers')}

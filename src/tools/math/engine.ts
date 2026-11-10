@@ -1,6 +1,7 @@
 import { createRng, type Rng } from '../../core/random';
 
 export type MathOp = 'add' | 'sub' | 'mul' | 'div';
+export type FillMode = 'answer' | 'operand';
 
 export interface MathParams {
   ops: MathOp[];
@@ -9,6 +10,8 @@ export interface MathParams {
   carry: boolean;
   /** Subtraction questions must borrow when true; must not borrow when false. */
   borrow: boolean;
+  /** Which part of the equation the learner fills in. */
+  fillModes: FillMode[];
   count: number;
   columns: number;
   fontSize: 'sm' | 'md' | 'lg' | 'xl';
@@ -24,7 +27,11 @@ export interface MathQuestion {
   b: number;
   op: MathOp;
   answer: number;
+  fill: FillMode;
+  hidden?: 'a' | 'b';
 }
+
+type GeneratedQuestion = Omit<MathQuestion, 'fill' | 'hidden'>;
 
 export interface MathModel {
   questions: MathQuestion[];
@@ -43,7 +50,7 @@ export function questionText(question: MathQuestion): string {
   return `${question.a} ${OP_SYMBOL[question.op]} ${question.b}`;
 }
 
-export function questionKey(question: MathQuestion): string {
+export function questionKey(question: Pick<MathQuestion, 'a' | 'b' | 'op'>): string {
   const [left, right] =
     question.op === 'add' || question.op === 'mul'
       ? [question.a, question.b].sort((x, y) => x - y)
@@ -65,7 +72,7 @@ function makeQuestion(
   carry: boolean,
   borrow: boolean,
   rng: Rng,
-): MathQuestion | null {
+): GeneratedQuestion | null {
   const max = Math.max(2, Math.floor(range));
 
   for (let attempt = 0; attempt < 40; attempt += 1) {
@@ -116,7 +123,7 @@ export function generateMathWorksheet(params: MathParams): MathModel {
   const rng = createRng(
     `${params.seed}|math|${ops.join(',')}|${params.range}|${params.carry}|${params.borrow}`,
   );
-  const pool: MathQuestion[] = [];
+  const pool: GeneratedQuestion[] = [];
   const seen = new Set<string>();
   let attempts = 0;
 
@@ -147,8 +154,18 @@ export function generateMathWorksheet(params: MathParams): MathModel {
     }
   }
 
+  const fillModes = params.fillModes.length > 0 ? params.fillModes : (['answer'] as FillMode[]);
+  const withFill = questions.map((question, index) => {
+    const fillRng = createRng(`${params.seed}|fill|${index}|${fillModes.join(',')}`);
+    const fill = fillModes.length === 1 ? fillModes[0] : fillRng.pick(fillModes);
+    if (fill === 'operand') {
+      return { ...question, fill, hidden: fillRng.next() < 0.5 ? 'a' : 'b' } as MathQuestion;
+    }
+    return { ...question, fill } as MathQuestion;
+  });
+
   return {
-    questions,
+    questions: withFill,
     uniqueCount: pool.length,
     warning: questions.length > pool.length || pool.length < count,
   };
