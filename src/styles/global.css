@@ -948,6 +948,15 @@ svg {
   border-bottom: 0.3mm solid #000000;
 }
 
+.math-question.is-expression {
+  grid-template-columns: 4mm minmax(0, 1fr) 3mm 10mm;
+}
+
+.math-given {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 .math-answers {
   display: grid;
   grid-template-columns: repeat(var(--cols), minmax(0, 1fr));

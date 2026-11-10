@@ -25,6 +25,7 @@ import {
 
 type FontSize = MathParams['fontSize'];
 type ConfigMode = 'preset' | 'custom';
+type FillMode = 'answer' | 'expression';
 
 const FONT_SIZE: Record<FontSize, string> = {
   sm: '10pt',
@@ -90,6 +91,7 @@ export function MathTool() {
   const [batchMode, setBatchMode] = useState<BatchMode>('different');
   const [configMode, setConfigMode] = useState<ConfigMode>('preset');
   const [presetKey, setPresetKey] = useState('g2');
+  const [fillMode, setFillMode] = useState<FillMode>('answer');
 
   const models = useMemo(
     () =>
@@ -174,7 +176,8 @@ export function MathTool() {
   // Fit the requested number of questions on one A4 page: widen the grid and
   // shrink the type when the count is high. The selected values remain as the
   // user's preference, but the sheet always stays one page.
-  const effectiveColumns = Math.min(5, Math.max(columns, Math.ceil(count / 25)));
+  const maxColumns = fillMode === 'expression' ? 4 : 5;
+  const effectiveColumns = Math.min(maxColumns, Math.max(columns, Math.ceil(count / 25)));
   const rows = Math.ceil(count / effectiveColumns);
   const selectedSize = FONT_SIZE[fontSize];
   let fitSize = selectedSize;
@@ -232,11 +235,24 @@ export function MathTool() {
 
         <div className="math-questions" style={questionStyle}>
           {model.questions.map((question, index) => (
-            <div className="math-question" key={`${index}-${question.a}-${question.b}-${question.op}`}>
+            <div
+              className={`math-question${fillMode === 'expression' ? ' is-expression' : ''}`}
+              key={`${index}-${question.a}-${question.b}-${question.op}`}
+            >
               <span className="math-index">{index + 1}.</span>
-              <span className="math-expression">{questionText(question)}</span>
-              <span className="math-equals">=</span>
-              <span className="math-blank" />
+              {fillMode === 'answer' ? (
+                <>
+                  <span className="math-expression">{questionText(question)}</span>
+                  <span className="math-equals">=</span>
+                  <span className="math-blank" />
+                </>
+              ) : (
+                <>
+                  <span className="math-blank" />
+                  <span className="math-equals">=</span>
+                  <span className="math-given">{question.answer}</span>
+                </>
+              )}
             </div>
           ))}
         </div>
@@ -255,11 +271,18 @@ export function MathTool() {
             <span>{titleText}</span>
           </div>
         </div>
-        <div className="math-answers" style={{ '--cols': 6 } as CSSProperties}>
+        <div
+          className="math-answers"
+          style={{ '--cols': fillMode === 'expression' ? 4 : 6 } as CSSProperties}
+        >
           {model.questions.map((question, index) => (
             <span className="math-answer" key={`answer-${index}-${question.a}-${question.b}`}>
               <span className="math-index">{index + 1}.</span>
-              <span>{question.answer}</span>
+              <span>
+                {fillMode === 'expression'
+                  ? `${questionText(question)} = ${question.answer}`
+                  : question.answer}
+              </span>
             </span>
           ))}
         </div>
@@ -426,6 +449,17 @@ export function MathTool() {
 
             <div className="settings-group">
               <h2>{t('math.output')}</h2>
+              <Field label={t('math.fillMode')} help={t('math.fillModeHint')}>
+                <SegmentedControl
+                  label={t('math.fillMode')}
+                  value={fillMode}
+                  options={[
+                    { value: 'answer', label: t('math.fillMode.answer') },
+                    { value: 'expression', label: t('math.fillMode.expression') },
+                  ]}
+                  onChange={(value) => setFillMode(value as FillMode)}
+                />
+              </Field>
               <SwitchField
                 label={t('math.includeAnswers')}
                 checked={showAnswers}
