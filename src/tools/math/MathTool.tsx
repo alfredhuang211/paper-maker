@@ -84,7 +84,7 @@ export function MathTool() {
   const [count, setCount] = useState(20);
   const [columns, setColumns] = useState(4);
   const [fontSize, setFontSize] = useState<FontSize>('md');
-  const [showAnswers, setShowAnswers] = useState(true);
+  const [showAnswers, setShowAnswers] = useState(false);
   const [showName, setShowName] = useState(true);
   const [showDate, setShowDate] = useState(true);
   const [title, setTitle] = useState('');
