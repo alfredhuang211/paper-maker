@@ -7,6 +7,7 @@ import { SelectField } from '../../components/ui/SelectField';
 import { SwitchField } from '../../components/ui/SwitchField';
 import { CheckboxField } from '../../components/ui/CheckboxField';
 import { TextField } from '../../components/ui/TextField';
+import { Button } from '../../components/ui/Button';
 import { ToolIntro } from '../../components/pattern/AppChrome';
 import { SeedSettings } from '../../components/pattern/SeedSettings';
 import { BatchSettings } from '../../components/pattern/BatchSettings';
@@ -23,6 +24,7 @@ import {
 } from './engine';
 
 type FontSize = MathParams['fontSize'];
+type ConfigMode = 'preset' | 'custom';
 
 const FONT_SIZE: Record<FontSize, string> = {
   sm: '10pt',
@@ -86,6 +88,8 @@ export function MathTool() {
   const [title, setTitle] = useState('');
   const [sheets, setSheets] = useState(1);
   const [batchMode, setBatchMode] = useState<BatchMode>('different');
+  const [configMode, setConfigMode] = useState<ConfigMode>('preset');
+  const [presetKey, setPresetKey] = useState('g2');
 
   const models = useMemo(
     () =>
@@ -138,7 +142,32 @@ export function MathTool() {
     setCount(preset.count);
     setCarry(preset.carry);
     setBorrow(preset.borrow);
+    setPresetKey(preset.key);
+    setConfigMode('preset');
   };
+
+  const applyPresetByKey = (key: string) => {
+    const preset = PRESETS.find((item) => item.key === key);
+    if (preset) applyPreset(preset);
+  };
+
+  const changeConfigMode = (mode: ConfigMode) => {
+    if (mode === 'preset') {
+      const preset = PRESETS.find((item) => item.key === presetKey) ?? PRESETS[1];
+      applyPreset(preset);
+    } else {
+      setConfigMode('custom');
+    }
+  };
+
+  const opsSummary = OP_KEYS.filter((operation) => ops.includes(operation.value))
+    .map((operation) => t(operation.labelKey))
+    .join(' · ');
+  const carrySummary =
+    [carry ? t('math.carry.add') : null, borrow ? t('math.borrow.sub') : null]
+      .filter(Boolean)
+      .join(' · ') || t('math.carry.none');
+  const rangeSummary = t(`math.range.${range}` as MessageKey);
 
   const titleText = title.trim() || t('math.titleDefault');
 
@@ -255,74 +284,122 @@ export function MathTool() {
         <div className="tool-layout">
           <aside className="panel settings-panel">
             <div className="settings-group">
-              <span className="field-label">{t('math.preset')}</span>
-              <div className="chip-row">
-                {PRESETS.map((preset) => (
-                  <button
-                    key={preset.key}
-                    type="button"
-                    className="chip"
-                    onClick={() => applyPreset(preset)}
-                  >
-                    {t(preset.labelKey)}
-                  </button>
-                ))}
+              <Field label={t('math.configMode')}>
+                <SegmentedControl
+                  label={t('math.configMode')}
+                  value={configMode}
+                  options={[
+                    { value: 'preset', label: t('math.mode.preset') },
+                    { value: 'custom', label: t('math.mode.custom') },
+                  ]}
+                  onChange={(value) => changeConfigMode(value as ConfigMode)}
+                />
+              </Field>
+            </div>
+
+            {configMode === 'preset' ? (
+              <div className="settings-group">
+                <h2>{t('math.presetSummary')}</h2>
+                <SelectField
+                  label={t('math.preset')}
+                  value={presetKey}
+                  options={PRESETS.map((preset) => ({
+                    value: preset.key,
+                    label: t(preset.labelKey),
+                  }))}
+                  onChange={applyPresetByKey}
+                />
+                <div className="preset-summary">
+                  <div className="preset-summary-row">
+                    <span>{t('math.ops')}</span>
+                    <strong>{opsSummary}</strong>
+                  </div>
+                  <div className="preset-summary-row">
+                    <span>{t('math.range')}</span>
+                    <strong>{rangeSummary}</strong>
+                  </div>
+                  <div className="preset-summary-row">
+                    <span>{t('math.carry')}</span>
+                    <strong>{carrySummary}</strong>
+                  </div>
+                  <div className="preset-summary-row">
+                    <span>{t('math.count')}</span>
+                    <strong>{count}</strong>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  block
+                  onClick={() => setConfigMode('custom')}
+                >
+                  {t('math.tune')}
+                </Button>
+                <p className="action-note">{t('math.presetNote')}</p>
               </div>
-            </div>
+            ) : (
+              <div className="settings-group">
+                <h2>{t('math.rules')}</h2>
+                <p className="action-note">{t('math.customNote')}</p>
+                <Field label={t('math.ops')}>
+                  <div className="chip-row">
+                    {OP_KEYS.map((operation) => (
+                      <button
+                        key={operation.value}
+                        type="button"
+                        className="chip"
+                        aria-pressed={ops.includes(operation.value)}
+                        onClick={() => toggleOp(operation.value)}
+                      >
+                        {t(operation.labelKey)}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+                <SelectField
+                  label={t('math.range')}
+                  value={String(range)}
+                  options={[10, 20, 50, 100].map((value) => ({
+                    value: String(value),
+                    label: t(`math.range.${value}` as MessageKey),
+                  }))}
+                  onChange={(value) => setRange(Number(value))}
+                />
+                <Field label={t('math.carry')} help={t('math.carryHint')}>
+                  <div className="checkbox-row">
+                    <CheckboxField
+                      label={t('math.carry.add')}
+                      checked={carry}
+                      onChange={setCarry}
+                    />
+                    <CheckboxField
+                      label={t('math.borrow.sub')}
+                      checked={borrow}
+                      onChange={setBorrow}
+                    />
+                  </div>
+                </Field>
+                <RangeField
+                  label={t('math.count')}
+                  value={count}
+                  min={10}
+                  max={100}
+                  step={10}
+                  onChange={setCount}
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  block
+                  onClick={() => changeConfigMode('preset')}
+                >
+                  {t('math.usePreset')}
+                </Button>
+              </div>
+            )}
 
             <div className="settings-group">
-              <Field label={t('math.ops')}>
-                <div className="chip-row">
-                  {OP_KEYS.map((operation) => (
-                    <button
-                      key={operation.value}
-                      type="button"
-                      className="chip"
-                      aria-pressed={ops.includes(operation.value)}
-                      onClick={() => toggleOp(operation.value)}
-                    >
-                      {t(operation.labelKey)}
-                    </button>
-                  ))}
-                </div>
-              </Field>
-            </div>
-
-            <div className="settings-group">
-              <SelectField
-                label={t('math.range')}
-                value={String(range)}
-                options={[10, 20, 50, 100].map((value) => ({
-                  value: String(value),
-                  label: t(`math.range.${value}` as MessageKey),
-                }))}
-                onChange={(value) => setRange(Number(value))}
-              />
-              <Field label={t('math.carry')} help={t('math.carryHint')}>
-                <div className="checkbox-row">
-                  <CheckboxField
-                    label={t('math.carry.add')}
-                    checked={carry}
-                    onChange={setCarry}
-                  />
-                  <CheckboxField
-                    label={t('math.borrow.sub')}
-                    checked={borrow}
-                    onChange={setBorrow}
-                  />
-                </div>
-              </Field>
-            </div>
-
-            <div className="settings-group">
-              <RangeField
-                label={t('math.count')}
-                value={count}
-                min={10}
-                max={100}
-                step={10}
-                onChange={setCount}
-              />
+              <h2>{t('math.layout')}</h2>
               <RangeField
                 label={t('math.columns')}
                 value={columns}
@@ -346,6 +423,7 @@ export function MathTool() {
             </div>
 
             <div className="settings-group">
+              <h2>{t('math.output')}</h2>
               <SwitchField
                 label={t('math.includeAnswers')}
                 checked={showAnswers}
@@ -353,9 +431,6 @@ export function MathTool() {
               />
               <SwitchField label={t('common.showName')} checked={showName} onChange={setShowName} />
               <SwitchField label={t('common.showDate')} checked={showDate} onChange={setShowDate} />
-            </div>
-
-            <div className="settings-group">
               <TextField
                 label={t('common.title')}
                 value={title}
