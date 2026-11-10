@@ -917,26 +917,34 @@ svg {
 }
 
 .math-question {
-  display: flex;
+  display: grid;
+  grid-template-columns: 4mm minmax(0, 1fr) 3mm var(--blank-width, 12mm);
   align-items: baseline;
-  gap: 1mm;
+  column-gap: 1mm;
   min-width: 0;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 
 .math-index {
-  width: 5mm;
   color: #555555;
   font-size: 0.72em;
   text-align: right;
 }
 
+.math-expression {
+  min-width: 0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.math-equals {
+  text-align: center;
+}
+
 .math-blank {
-  display: inline-block;
-  min-width: var(--blank-width, 12mm);
+  width: 100%;
   height: 1em;
-  margin-left: 0.5mm;
   border-bottom: 0.3mm solid #000000;
 }
 

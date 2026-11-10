@@ -190,13 +190,15 @@ export function MathTool() {
     fitSize = '10pt';
     rowGap = '3mm';
   } else if (rows > 8) {
-    rowGap = '5mm';
+    rowGap = '6mm';
+  } else {
+    rowGap = '10mm';
   }
 
   if (effectiveColumns === 4 && fontSize === 'xl') fitSize = '14pt';
   if (effectiveColumns >= 5) fitSize = rows > 15 ? '8pt' : '9pt';
 
-  const blankWidth = effectiveColumns >= 5 ? '8mm' : effectiveColumns === 4 ? '10mm' : '12mm';
+  const blankWidth = effectiveColumns >= 5 ? '11mm' : effectiveColumns === 4 ? '16mm' : '20mm';
   const layoutAdjusted = effectiveColumns !== columns || fitSize !== selectedSize;
 
   const questionStyle = {
@@ -232,8 +234,8 @@ export function MathTool() {
           {model.questions.map((question, index) => (
             <div className="math-question" key={`${index}-${question.a}-${question.b}-${question.op}`}>
               <span className="math-index">{index + 1}.</span>
-              <span>{questionText(question)}</span>
-              <span>=</span>
+              <span className="math-expression">{questionText(question)}</span>
+              <span className="math-equals">=</span>
               <span className="math-blank" />
             </div>
           ))}
