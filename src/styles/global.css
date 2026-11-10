@@ -772,6 +772,29 @@ svg {
   border-color: color-mix(in srgb, var(--color-accent) 30%, var(--color-line));
 }
 
+.checkbox-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+}
+
+.checkbox-field {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  color: var(--color-ink);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.checkbox-field input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--color-accent);
+}
+
 .warning {
   padding: var(--space-3);
   color: var(--color-warning);
@@ -1183,6 +1206,10 @@ svg {
   }
 
   .switch {
+    min-height: 44px;
+  }
+
+  .checkbox-field {
     min-height: 44px;
   }
 

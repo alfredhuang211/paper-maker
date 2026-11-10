@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   generateMathWorksheet,
   questionKey,
-  type CarryMode,
   type MathOp,
   type MathParams,
 } from './engine';
@@ -10,7 +9,8 @@ import {
 const baseParams: MathParams = {
   ops: ['add', 'sub'],
   range: 100,
-  carry: 'auto',
+  carry: true,
+  borrow: true,
   count: 20,
   columns: 4,
   fontSize: 'md',
@@ -79,7 +79,7 @@ describe('math worksheet engine', () => {
   });
 
   it('only generates carrying additions when required', () => {
-    const model = generate({ ops: ['add'], range: 100, carry: 'require', count: 30 });
+    const model = generate({ ops: ['add'], range: 100, carry: true, borrow: false, count: 30 });
     for (const question of model.questions) {
       expect(hasCarry(question.a, question.b)).toBe(true);
       expect(question.a + question.b).toBeLessThanOrEqual(100);
@@ -87,7 +87,7 @@ describe('math worksheet engine', () => {
   });
 
   it('only generates borrowing subtractions when required', () => {
-    const model = generate({ ops: ['sub'], range: 100, carry: 'require', count: 30 });
+    const model = generate({ ops: ['sub'], range: 100, carry: false, borrow: true, count: 30 });
     for (const question of model.questions) {
       expect(hasBorrow(question.a, question.b)).toBe(true);
       expect(question.a).toBeGreaterThanOrEqual(question.b);
@@ -95,7 +95,7 @@ describe('math worksheet engine', () => {
   });
 
   it('avoids carrying and borrowing when requested', () => {
-    const model = generate({ ops: ['add', 'sub'], range: 100, carry: 'avoid', count: 30 });
+    const model = generate({ ops: ['add', 'sub'], range: 100, carry: false, borrow: false, count: 30 });
     for (const question of model.questions) {
       if (question.op === 'add') expect(hasCarry(question.a, question.b)).toBe(false);
       if (question.op === 'sub') expect(hasBorrow(question.a, question.b)).toBe(false);
@@ -115,8 +115,14 @@ describe('math worksheet engine', () => {
     expect(seen.size).toBeGreaterThan(1);
   });
 
+  it('supports both carrying and borrowing when both are checked', () => {
+    const model = generate({ ops: ['add', 'sub'], range: 100, carry: true, borrow: true, count: 40 });
+    expect(model.questions.some((q) => q.op === 'add' && hasCarry(q.a, q.b))).toBe(true);
+    expect(model.questions.some((q) => q.op === 'sub' && hasBorrow(q.a, q.b))).toBe(true);
+  });
+
   it('falls back gracefully when a carry constraint is impossible', () => {
-    const model = generate({ ops: ['add'], range: 10, carry: 'require' as CarryMode, count: 10 });
+    const model = generate({ ops: ['add'], range: 5, carry: true, borrow: false, count: 10 });
     expect(model.questions).toHaveLength(10);
   });
 });

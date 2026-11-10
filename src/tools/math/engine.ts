@@ -1,12 +1,14 @@
 import { createRng, type Rng } from '../../core/random';
 
 export type MathOp = 'add' | 'sub' | 'mul' | 'div';
-export type CarryMode = 'auto' | 'require' | 'avoid';
 
 export interface MathParams {
   ops: MathOp[];
   range: number;
-  carry: CarryMode;
+  /** Addition questions must carry when true; must not carry when false. */
+  carry: boolean;
+  /** Subtraction questions must borrow when true; must not borrow when false. */
+  borrow: boolean;
   count: number;
   columns: number;
   fontSize: 'sm' | 'md' | 'lg' | 'xl';
@@ -60,11 +62,11 @@ function hasBorrow(a: number, b: number): boolean {
 function makeQuestion(
   op: MathOp,
   range: number,
-  carry: CarryMode,
+  carry: boolean,
+  borrow: boolean,
   rng: Rng,
 ): MathQuestion | null {
   const max = Math.max(2, Math.floor(range));
-  const effectiveCarry = range < 20 ? 'auto' : carry;
 
   for (let attempt = 0; attempt < 40; attempt += 1) {
     if (op === 'add') {
@@ -72,8 +74,7 @@ function makeQuestion(
       const b = rng.int(0, max);
       const sum = a + b;
       if (sum > range) continue;
-      if (effectiveCarry === 'require' && !hasCarry(a, b)) continue;
-      if (effectiveCarry === 'avoid' && hasCarry(a, b)) continue;
+      if (carry !== hasCarry(a, b)) continue;
       if (a === 0 || b === 0) continue;
       return { a, b, op, answer: sum };
     }
@@ -83,8 +84,7 @@ function makeQuestion(
       let b = rng.int(0, max);
       if (a < b) [a, b] = [b, a];
       if (a === b || b === 0) continue;
-      if (effectiveCarry === 'require' && !hasBorrow(a, b)) continue;
-      if (effectiveCarry === 'avoid' && hasBorrow(a, b)) continue;
+      if (borrow !== hasBorrow(a, b)) continue;
       return { a, b, op, answer: a - b };
     }
 
@@ -114,7 +114,7 @@ function makeQuestion(
 export function generateMathWorksheet(params: MathParams): MathModel {
   const ops = params.ops.length > 0 ? params.ops : ['add' as MathOp];
   const rng = createRng(
-    `${params.seed}|math|${ops.join(',')}|${params.range}|${params.carry}`,
+    `${params.seed}|math|${ops.join(',')}|${params.range}|${params.carry}|${params.borrow}`,
   );
   const pool: MathQuestion[] = [];
   const seen = new Set<string>();
@@ -123,7 +123,7 @@ export function generateMathWorksheet(params: MathParams): MathModel {
   while (pool.length < 100 && attempts < 20000) {
     attempts += 1;
     const op = rng.pick(ops);
-    const question = makeQuestion(op, params.range, params.carry, rng);
+    const question = makeQuestion(op, params.range, params.carry, params.borrow, rng);
     if (!question) continue;
     const key = questionKey(question);
     if (seen.has(key)) continue;
@@ -137,7 +137,7 @@ export function generateMathWorksheet(params: MathParams): MathModel {
   if (questions.length < count) {
     if (pool.length === 0) {
       // Degenerate settings (e.g. impossible carry constraint): fall back to auto.
-      const fallback = generateMathWorksheet({ ...params, carry: 'auto' });
+      const fallback = generateMathWorksheet({ ...params, carry: false, borrow: false });
       return { ...fallback, warning: true };
     }
     let index = 0;

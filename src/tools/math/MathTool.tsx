@@ -1,11 +1,11 @@
 import { useMemo, useState, type CSSProperties } from 'react';
 import { useI18n, type MessageKey } from '../../i18n';
 import { useSeed } from '../../hooks/useSeed';
-import { formatDate } from '../../core/date';
 import { Field, SegmentedControl } from '../../components/ui/SegmentedControl';
 import { RangeField } from '../../components/ui/RangeField';
 import { SelectField } from '../../components/ui/SelectField';
 import { SwitchField } from '../../components/ui/SwitchField';
+import { CheckboxField } from '../../components/ui/CheckboxField';
 import { TextField } from '../../components/ui/TextField';
 import { ToolIntro } from '../../components/pattern/AppChrome';
 import { SeedSettings } from '../../components/pattern/SeedSettings';
@@ -17,7 +17,6 @@ import { ToolActions } from '../../components/pattern/ToolActions';
 import {
   generateMathWorksheet,
   questionText,
-  type CarryMode,
   type MathModel,
   type MathOp,
   type MathParams,
@@ -45,18 +44,20 @@ const PRESETS: {
   ops: MathOp[];
   range: number;
   count: number;
-  carry: CarryMode;
+  carry: boolean;
+  borrow: boolean;
 }[] = [
-  { key: 'g1', labelKey: 'math.preset.g1', ops: ['add', 'sub'], range: 10, count: 20, carry: 'auto' },
-  { key: 'g1b', labelKey: 'math.preset.g1b', ops: ['add', 'sub'], range: 20, count: 20, carry: 'auto' },
-  { key: 'g2', labelKey: 'math.preset.g2', ops: ['add', 'sub'], range: 100, count: 20, carry: 'auto' },
+  { key: 'g1', labelKey: 'math.preset.g1', ops: ['add', 'sub'], range: 10, count: 20, carry: false, borrow: false },
+  { key: 'g1b', labelKey: 'math.preset.g1b', ops: ['add', 'sub'], range: 20, count: 20, carry: true, borrow: true },
+  { key: 'g2', labelKey: 'math.preset.g2', ops: ['add', 'sub'], range: 100, count: 20, carry: true, borrow: true },
   {
     key: 'tables',
     labelKey: 'math.preset.tables',
     ops: ['mul', 'div'],
     range: 100,
     count: 20,
-    carry: 'auto',
+    carry: false,
+    borrow: false,
   },
   {
     key: 'mixed',
@@ -64,16 +65,18 @@ const PRESETS: {
     ops: ['add', 'sub', 'mul', 'div'],
     range: 100,
     count: 30,
-    carry: 'auto',
+    carry: true,
+    borrow: true,
   },
 ];
 
 export function MathTool() {
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
   const { seed, setSeed, regenerate } = useSeed();
   const [ops, setOps] = useState<MathOp[]>(['add', 'sub']);
   const [range, setRange] = useState(100);
-  const [carry, setCarry] = useState<CarryMode>('auto');
+  const [carry, setCarry] = useState(true);
+  const [borrow, setBorrow] = useState(true);
   const [count, setCount] = useState(20);
   const [columns, setColumns] = useState(4);
   const [fontSize, setFontSize] = useState<FontSize>('md');
@@ -91,6 +94,7 @@ export function MathTool() {
           ops,
           range,
           carry,
+          borrow,
           count,
           columns,
           fontSize,
@@ -105,6 +109,7 @@ export function MathTool() {
       ops,
       range,
       carry,
+      borrow,
       count,
       columns,
       fontSize,
@@ -132,6 +137,7 @@ export function MathTool() {
     setRange(preset.range);
     setCount(preset.count);
     setCarry(preset.carry);
+    setBorrow(preset.borrow);
   };
 
   const titleText = title.trim() || t('math.titleDefault');
@@ -184,7 +190,7 @@ export function MathTool() {
             ) : null}
             {showDate ? (
               <span>
-                {t('common.date')}: {formatDate(lang)}
+                {t('common.date')}: <span className="meta-line" />
               </span>
             ) : null}
             <span>
@@ -216,7 +222,6 @@ export function MathTool() {
           <h1 className="sheet-title">{t('math.answerTitle')}</h1>
           <div className="sheet-meta">
             <span>{titleText}</span>
-            <span>{formatDate(lang)}</span>
           </div>
         </div>
         <div className="math-answers" style={{ '--cols': 6 } as CSSProperties}>
@@ -294,16 +299,18 @@ export function MathTool() {
                 onChange={(value) => setRange(Number(value))}
               />
               <Field label={t('math.carry')} help={t('math.carryHint')}>
-                <SegmentedControl
-                  label={t('math.carry')}
-                  value={carry}
-                  options={[
-                    { value: 'auto', label: t('math.carry.auto') },
-                    { value: 'require', label: t('math.carry.require') },
-                    { value: 'avoid', label: t('math.carry.avoid') },
-                  ]}
-                  onChange={(value) => setCarry(value as CarryMode)}
-                />
+                <div className="checkbox-row">
+                  <CheckboxField
+                    label={t('math.carry.add')}
+                    checked={carry}
+                    onChange={setCarry}
+                  />
+                  <CheckboxField
+                    label={t('math.borrow.sub')}
+                    checked={borrow}
+                    onChange={setBorrow}
+                  />
+                </div>
               </Field>
             </div>
 
