@@ -1153,10 +1153,17 @@ svg {
   line-height: 1.3;
 }
 
-.picture-option img {
+.picture-option img,
+.picture-option-placeholder {
   width: 100%;
   height: 58px;
   object-fit: contain;
+}
+
+.picture-option-placeholder {
+  display: block;
+  background: linear-gradient(100deg, #ecebe7 30%, #f7f6f2 50%, #ecebe7 70%);
+  border-radius: 4px;
 }
 
 .picture-option[aria-pressed='true'] {

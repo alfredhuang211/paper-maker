@@ -8,12 +8,13 @@ import { IconDownload, IconPrint } from '../../components/icons';
 import { ToolIntro } from '../../components/pattern/AppChrome';
 import { PaperList } from '../../components/pattern/PaperFrame';
 import { PICTURE_ASSETS, assetUrl } from './assets';
-import { imageToLineArt, type PictureLineWeight } from './process';
+import { imageToLineArt, type PictureFormat, type PictureLineWeight } from './process';
 
 interface CustomPicture {
   kind: 'local' | 'url';
   title: string;
   src: string;
+  format: Exclude<PictureFormat, 'auto'>;
   sourceUrl?: string;
   fileName?: string;
 }
@@ -32,6 +33,7 @@ export function ColoringPictureTool() {
   const [urlInput, setUrlInput] = useState('');
   const [urlLoading, setUrlLoading] = useState(false);
   const [urlError, setUrlError] = useState(false);
+  const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const objectUrlRef = useRef<string | null>(null);
 
@@ -56,7 +58,7 @@ export function ColoringPictureTool() {
     setLoading(true);
     setError(false);
     setProcessed('');
-    imageToLineArt(src, lineWeight)
+    imageToLineArt(src, lineWeight, { format: custom?.format ?? 'svg' })
       .then((url) => {
         if (!active) return;
         setProcessed(url);
@@ -70,7 +72,30 @@ export function ColoringPictureTool() {
     return () => {
       active = false;
     };
-  }, [src, lineWeight]);
+  }, [src, lineWeight, custom?.format]);
+
+  useEffect(() => {
+    let active = true;
+    setThumbnails({});
+    Promise.all(
+      PICTURE_ASSETS.map(async (item) => {
+        try {
+          const url = await imageToLineArt(assetUrl(item), lineWeight, {
+            maxSize: 480,
+            format: 'svg',
+          });
+          return [item.id, url] as const;
+        } catch {
+          return [item.id, ''] as const;
+        }
+      }),
+    ).then((entries) => {
+      if (active) setThumbnails(Object.fromEntries(entries));
+    });
+    return () => {
+      active = false;
+    };
+  }, [lineWeight]);
 
   const selectBuiltIn = (id: string) => {
     revokeObjectUrl();
@@ -86,10 +111,12 @@ export function ColoringPictureTool() {
       revokeObjectUrl();
       objectUrlRef.current = objectUrl;
       const fileName = file.name.replace(/\.[^.]+$/, '') || t('picture.userTitle');
+      const isSvg = file.type === 'image/svg+xml' || /\.svg$/i.test(file.name);
       setCustom({
         kind: 'local',
         title: fileName,
         src: objectUrl,
+        format: isSvg ? 'svg' : 'raster',
         fileName: file.name,
       });
       setAssetId('custom');
@@ -129,10 +156,12 @@ export function ColoringPictureTool() {
       objectUrlRef.current = objectUrl;
       const pathName = decodeURIComponent(parsed.pathname.split('/').pop() ?? '');
       const fileName = pathName.replace(/\.[^.]+$/, '') || t('picture.userTitle');
+      const isSvg = blob.type === 'image/svg+xml' || /\.svg$/i.test(pathName);
       setCustom({
         kind: 'url',
         title: fileName,
         src: objectUrl,
+        format: isSvg ? 'svg' : 'raster',
         sourceUrl: parsed.toString(),
       });
       setAssetId('custom');
@@ -210,7 +239,11 @@ export function ColoringPictureTool() {
                     aria-pressed={!custom && item.id === assetId}
                     onClick={() => selectBuiltIn(item.id)}
                   >
-                    <img src={assetUrl(item)} alt={item.title[lang]} loading="lazy" />
+                    {thumbnails[item.id] ? (
+                      <img src={thumbnails[item.id]} alt={item.title[lang]} loading="lazy" />
+                    ) : (
+                      <span className="picture-option-placeholder" aria-hidden="true" />
+                    )}
                     <span>{item.title[lang]}</span>
                   </button>
                 ))}

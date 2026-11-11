@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useI18n } from '../../i18n';
 import { generateColoring } from '../../tools/coloring/engine';
 import { generateMathWorksheet, questionText } from '../../tools/math/engine';
@@ -5,6 +6,7 @@ import { generateSchulte } from '../../tools/schulte/engine';
 import { generateMaze } from '../../tools/maze/engine';
 import { generateSudoku } from '../../tools/sudoku/engine';
 import { PICTURE_ASSETS, assetUrl } from '../../tools/coloring-image/assets';
+import { imageToLineArt } from '../../tools/coloring-image/process';
 
 const coloringPreview = generateColoring({
   theme: 'mandala',
@@ -52,6 +54,38 @@ function PageFrame({ title, children }: { title: string; children: React.ReactNo
   );
 }
 
+function PicturePreview() {
+  const { t } = useI18n();
+  const [src, setSrc] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    imageToLineArt(assetUrl(PICTURE_ASSETS[0]), 'medium', { maxSize: 600, format: 'svg' })
+      .then((url) => {
+        if (active) setSrc(url);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return (
+    <PageFrame title={t('home.picture.name')}>
+      {src ? (
+        <image
+          href={src}
+          x="15"
+          y="42"
+          width="180"
+          height="230"
+          preserveAspectRatio="xMidYMid meet"
+        />
+      ) : null}
+    </PageFrame>
+  );
+}
+
 export function ToolPreview({ slug }: { slug: string }) {
   const { t } = useI18n();
 
@@ -72,18 +106,7 @@ export function ToolPreview({ slug }: { slug: string }) {
   }
 
   if (slug === 'picture') {
-    return (
-      <PageFrame title={t('home.picture.name')}>
-        <image
-          href={assetUrl(PICTURE_ASSETS[0])}
-          x="15"
-          y="42"
-          width="180"
-          height="230"
-          preserveAspectRatio="xMidYMid meet"
-        />
-      </PageFrame>
-    );
+    return <PicturePreview />;
   }
 
   if (slug === 'math') {
