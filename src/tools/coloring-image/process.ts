@@ -94,6 +94,60 @@ function strokeWidthFor(weight: PictureLineWeight, maxSize: number): number {
   return Math.max(0.9, base * Math.min(1, maxSize / 1000));
 }
 
+/**
+ * Remove very small detail shapes before outlining. This keeps the main
+ * composition while avoiding a tangle of tiny vectors in the final line art.
+ */
+function simplifySvgText(text: string): string {
+  try {
+    const doc = new DOMParser().parseFromString(text, 'image/svg+xml');
+    const svg = doc.documentElement;
+    if (svg.nodeName.toLowerCase() !== 'svg') return text;
+
+    const viewBox = (svg.getAttribute('viewBox') ?? '')
+      .trim()
+      .split(/[ ,]+/)
+      .map(Number);
+    let width = viewBox[2];
+    let height = viewBox[3];
+    if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+      width = Number.parseFloat(svg.getAttribute('width') ?? '') || 1000;
+      height = Number.parseFloat(svg.getAttribute('height') ?? '') || 1000;
+    }
+
+    const host = document.createElement('div');
+    host.setAttribute('aria-hidden', 'true');
+    host.style.cssText =
+      'position:fixed;left:-10000px;top:0;width:20px;height:20px;overflow:hidden;opacity:0;pointer-events:none;';
+    const clone = svg.cloneNode(true) as SVGSVGElement;
+    host.appendChild(clone);
+    document.body.appendChild(host);
+
+    clone.querySelectorAll('text, tspan, foreignObject').forEach((element) => element.remove());
+
+    const minDimension = Math.max(width, height) * 0.008;
+    clone.querySelectorAll('path, rect, circle, ellipse, polygon, polyline, line').forEach((element) => {
+      try {
+        const box = (element as SVGGraphicsElement).getBBox();
+        if (Math.max(box.width, box.height) < minDimension) element.remove();
+      } catch {
+        // Leave shapes whose bounds cannot be measured.
+      }
+    });
+
+    const remaining = clone.querySelectorAll('path, rect, circle, ellipse, polygon, polyline, line');
+    if (remaining.length === 0) {
+      host.remove();
+      return text;
+    }
+    const result = new XMLSerializer().serializeToString(clone);
+    host.remove();
+    return result;
+  } catch {
+    return text;
+  }
+}
+
 async function renderSvgOutline(
   src: string,
   weight: PictureLineWeight,
@@ -111,6 +165,7 @@ async function renderSvgOutline(
   // Embedded bitmaps cannot be outlined by CSS; use the raster path instead.
   if (/<image[\s>]/i.test(text)) return null;
 
+  text = simplifySvgText(text);
   const strokeWidth = strokeWidthFor(weight, maxSize);
   const style = `<style>svg *{fill:none!important;stroke:#000000!important;stroke-width:${strokeWidth}px!important;stroke-linecap:round!important;stroke-linejoin:round!important;vector-effect:non-scaling-stroke!important;}</style>`;
   const patched = text.replace(/<\/svg\s*>/i, `${style}</svg>`);
@@ -163,8 +218,30 @@ function thresholdBinary(
   return binary;
 }
 
-function edgeBinary(gray: Float32Array, width: number, height: number, threshold: number): Uint8Array {
-  const binary = new Uint8Array(width * height);
+function blurGray(gray: Float32Array, width: number, height: number): Float32Array {
+  const horizontal = new Float32Array(gray.length);
+  const output = new Float32Array(gray.length);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const index = y * width + x;
+      const left = gray[index - (x > 0 ? 1 : 0)];
+      const right = gray[index + (x < width - 1 ? 1 : 0)];
+      horizontal[index] = (left + 2 * gray[index] + right) / 4;
+    }
+  }
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const index = y * width + x;
+      const top = horizontal[index - (y > 0 ? width : 0)];
+      const bottom = horizontal[index + (y < height - 1 ? width : 0)];
+      output[index] = (top + 2 * horizontal[index] + bottom) / 4;
+    }
+  }
+  return output;
+}
+
+function sobelMagnitude(gray: Float32Array, width: number, height: number): Float32Array {
+  const magnitude = new Float32Array(width * height);
   for (let y = 1; y < height - 1; y += 1) {
     for (let x = 1; x < width - 1; x += 1) {
       const index = y * width + x;
@@ -182,10 +259,82 @@ function edgeBinary(gray: Float32Array, width: number, height: number, threshold
         gray[index + width - 1] +
         2 * gray[index + width] +
         gray[index + width + 1];
-      if (Math.hypot(gx, gy) > threshold) binary[index] = 1;
+      magnitude[index] = Math.hypot(gx, gy);
+    }
+  }
+  return magnitude;
+}
+
+function edgeBinary(
+  gray: Float32Array,
+  width: number,
+  height: number,
+  low: number,
+  high: number,
+): Uint8Array {
+  const magnitude = sobelMagnitude(gray, width, height);
+  const binary = new Uint8Array(width * height);
+  const stack: number[] = [];
+  for (let index = 0; index < magnitude.length; index += 1) {
+    if (magnitude[index] > high) {
+      binary[index] = 1;
+      stack.push(index);
+    }
+  }
+  while (stack.length > 0) {
+    const index = stack.pop() as number;
+    const x = index % width;
+    const y = Math.floor(index / width);
+    for (let dy = -1; dy <= 1; dy += 1) {
+      for (let dx = -1; dx <= 1; dx += 1) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+        const next = ny * width + nx;
+        if (binary[next] || magnitude[next] <= low) continue;
+        binary[next] = 1;
+        stack.push(next);
+      }
     }
   }
   return binary;
+}
+
+function removeSmallComponents(
+  binary: Uint8Array,
+  width: number,
+  height: number,
+  minArea: number,
+): Uint8Array {
+  const visited = new Uint8Array(width * height);
+  const output = new Uint8Array(binary);
+  for (let start = 0; start < binary.length; start += 1) {
+    if (!binary[start] || visited[start]) continue;
+    const component: number[] = [];
+    const queue = [start];
+    visited[start] = 1;
+    while (queue.length > 0) {
+      const index = queue.pop() as number;
+      component.push(index);
+      const x = index % width;
+      const y = Math.floor(index / width);
+      for (let dy = -1; dy <= 1; dy += 1) {
+        for (let dx = -1; dx <= 1; dx += 1) {
+          const nx = x + dx;
+          const ny = y + dy;
+          if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+          const next = ny * width + nx;
+          if (!binary[next] || visited[next]) continue;
+          visited[next] = 1;
+          queue.push(next);
+        }
+      }
+    }
+    if (component.length < minArea) {
+      for (const index of component) output[index] = 0;
+    }
+  }
+  return output;
 }
 
 function dilate(binary: Uint8Array, width: number, height: number, radius: number): Uint8Array {
@@ -261,9 +410,12 @@ async function renderRasterLineArt(
     binary = thresholdBinary(gray, threshold);
     binary = dilate(binary, width, height, weight === 'thick' ? 1 : 0);
   } else {
-    const threshold = weight === 'thin' ? 72 : weight === 'thick' ? 34 : 50;
-    binary = edgeBinary(gray, width, height, threshold);
-    binary = dilate(binary, width, height, weight === 'thick' ? 2 : 1);
+    const blurred = blurGray(gray, width, height);
+    const low = weight === 'thin' ? 46 : weight === 'thick' ? 24 : 34;
+    const high = weight === 'thin' ? 96 : weight === 'thick' ? 52 : 72;
+    binary = edgeBinary(blurred, width, height, low, high);
+    binary = removeSmallComponents(binary, width, height, Math.max(24, Math.round(total * 0.00008)));
+    binary = dilate(binary, width, height, weight === 'thick' ? 1 : 0);
   }
 
   return cropToContent(binaryToCanvas(binary, width, height));
