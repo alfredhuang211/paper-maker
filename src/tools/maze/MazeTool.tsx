@@ -4,6 +4,7 @@ import { useSeed } from '../../hooks/useSeed';
 import { Field, SegmentedControl } from '../../components/ui/SegmentedControl';
 import { SwitchField } from '../../components/ui/SwitchField';
 import { TextField } from '../../components/ui/TextField';
+import { SelectField } from '../../components/ui/SelectField';
 import { ToolIntro } from '../../components/pattern/AppChrome';
 import { SeedSettings } from '../../components/pattern/SeedSettings';
 import { BatchSettings } from '../../components/pattern/BatchSettings';
@@ -13,9 +14,12 @@ import { SheetFooter } from '../../components/pattern/SheetParts';
 import { ToolActions } from '../../components/pattern/ToolActions';
 import {
   generateMaze,
+  MAZE_SHAPES,
   MAZE_SIZES,
+  mazeRowsFor,
   type MazeLineWeight,
   type MazeModel,
+  type MazeShape,
   type MazeSize,
 } from './engine';
 
@@ -26,6 +30,7 @@ export function MazeTool() {
   const { t } = useI18n();
   const { seed, setSeed, regenerate } = useSeed();
   const [size, setSize] = useState<MazeSize>(15);
+  const [shape, setShape] = useState<MazeShape>('square');
   const [lineWeight, setLineWeight] = useState<MazeLineWeight>('medium');
   const [title, setTitle] = useState('');
   const [showName, setShowName] = useState(true);
@@ -38,14 +43,20 @@ export function MazeTool() {
       Array.from({ length: sheets }, (_, index) =>
         generateMaze({
           size,
+          shape,
           lineWeight,
           seed: sheetSeed(seed, index, batchMode),
         }),
       ),
-    [size, lineWeight, seed, sheets, batchMode],
+    [size, shape, lineWeight, seed, sheets, batchMode],
   );
 
-  const cellMm = Math.min(CONTENT_MM / size, ART_HEIGHT_MM / size);
+  const rows = mazeRowsFor(size, shape);
+  const cellMm = Math.min(CONTENT_MM / size, ART_HEIGHT_MM / rows);
+  const sizeLabel = (value: MazeSize) =>
+    shape === 'rectangle'
+      ? `${value}×${mazeRowsFor(value, shape)}`
+      : `${value}×${value}`;
   const titleText = title.trim() || t('maze.titleDefault');
 
   const renderSheet = (model: MazeModel, index: number) => {
@@ -71,7 +82,7 @@ export function MazeTool() {
 
           <div className="maze-art">
             <svg
-              viewBox={`0 0 ${model.cols} ${model.rows}`}
+              viewBox={`-0.9 -1.2 ${model.cols + 1.8} ${model.rows + 2.4}`}
               preserveAspectRatio="xMidYMid meet"
               role="img"
               aria-label={titleText}
@@ -92,6 +103,28 @@ export function MazeTool() {
                     y2={wall.y2}
                   />
                 ))}
+              </g>
+              <g fill="#000000" stroke="#000000" strokeWidth={strokeWidth} strokeLinecap="round">
+                <line
+                  x1={model.start.x + 0.5}
+                  y1={-1.0}
+                  x2={model.start.x + 0.5}
+                  y2={-0.45}
+                />
+                <polygon
+                  points={`${model.start.x + 0.5 - 0.28},${-0.48} ${model.start.x + 0.5 + 0.28},${-0.48} ${model.start.x + 0.5},${-0.08}`}
+                  stroke="none"
+                />
+                <line
+                  x1={model.exit.x + 0.5}
+                  y1={model.rows + 0.45}
+                  x2={model.exit.x + 0.5}
+                  y2={model.rows + 1.0}
+                />
+                <polygon
+                  points={`${model.exit.x + 0.5 - 0.28},${model.rows + 0.48} ${model.exit.x + 0.5 + 0.28},${model.rows + 0.48} ${model.exit.x + 0.5},${model.rows + 1.08}`}
+                  stroke="none"
+                />
               </g>
             </svg>
           </div>
@@ -115,13 +148,22 @@ export function MazeTool() {
         <div className="tool-layout">
           <aside className="panel settings-panel">
             <div className="settings-group">
+              <SelectField
+                label={t('maze.shape')}
+                value={shape}
+                options={MAZE_SHAPES.map((value) => ({
+                  value,
+                  label: t(`maze.shape.${value}`),
+                }))}
+                onChange={(value) => setShape(value as MazeShape)}
+              />
               <Field label={t('maze.size')} help={t('maze.sizeHint')}>
                 <SegmentedControl
                   label={t('maze.size')}
                   value={String(size)}
                   options={MAZE_SIZES.map((value) => ({
                     value: String(value),
-                    label: `${value}×${value}`,
+                    label: sizeLabel(value),
                   }))}
                   onChange={(value) => setSize(Number(value) as MazeSize)}
                 />
