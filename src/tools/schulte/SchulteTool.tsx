@@ -13,10 +13,19 @@ import { SheetFooter } from '../../components/pattern/SheetParts';
 import { ToolActions } from '../../components/pattern/ToolActions';
 import { generateSchulte, SCHULTE_SIZES, type SchulteModel, type SchulteSize } from './engine';
 
+type GridsPerPage = 1 | 2 | 4;
+
+const GRIDS_PER_PAGE: GridsPerPage[] = [1, 2, 4];
+
+const CONTENT_WIDTH_MM = 180;
+const CONTENT_HEIGHT_MM = 267;
+const GAP_MM = 6;
+
 export function SchulteTool() {
   const { t } = useI18n();
   const { seed, setSeed, regenerate } = useSeed();
   const [size, setSize] = useState<SchulteSize>(5);
+  const [gridsPerPage, setGridsPerPage] = useState<GridsPerPage>(1);
   const [showRecord, setShowRecord] = useState(true);
   const [showInstructions, setShowInstructions] = useState(true);
   const [centerMark, setCenterMark] = useState(false);
@@ -24,17 +33,39 @@ export function SchulteTool() {
   const [sheets, setSheets] = useState(1);
   const [batchMode, setBatchMode] = useState<BatchMode>('different');
 
-  const models = useMemo(
+  const pages = useMemo(
     () =>
-      Array.from({ length: sheets }, (_, index) =>
-        generateSchulte({ size, seed: sheetSeed(seed, index, batchMode) }),
-      ),
-    [size, seed, sheets, batchMode],
+      Array.from({ length: sheets }, (_, sheetIndex) => {
+        const pageSeed = sheetSeed(seed, sheetIndex, batchMode);
+        return Array.from({ length: gridsPerPage }, (_, gridIndex) =>
+          generateSchulte({
+            size,
+            seed: gridIndex === 0 ? pageSeed : `${pageSeed}-g${gridIndex + 1}`,
+          }),
+        );
+      }),
+    [size, seed, sheets, batchMode, gridsPerPage],
   );
-  const cellMm = Math.min(180 / size, 52);
+
+  const columns = gridsPerPage === 4 ? 2 : 1;
+  const rows = gridsPerPage === 4 ? 2 : gridsPerPage;
+
+  // Approximate the vertical budget in millimetres so each grid stays inside its block.
+  const headerMm = gridsPerPage === 1 ? (showRecord ? 16 : 12) : 12;
+  const instructionsMm = showInstructions ? 12 : 0;
+  const footerMm = 9;
+  const captionMm = gridsPerPage > 1 ? 7 : 0;
+  const availableHeightMm = CONTENT_HEIGHT_MM - headerMm - instructionsMm - footerMm;
+  const blockHeightMm = (availableHeightMm - GAP_MM * (rows - 1)) / rows;
+  const blockWidthMm = (CONTENT_WIDTH_MM - GAP_MM * (columns - 1)) / columns;
+  const cellMm = Math.max(
+    8,
+    Math.min(blockWidthMm / size, (blockHeightMm - captionMm) / size, 52),
+  );
+  const tooSmall = cellMm < 18;
   const centerIndex = size % 2 === 1 ? Math.floor((size * size) / 2) : -1;
 
-  const renderSheet = (model: SchulteModel, index: number) => {
+  const renderGrid = (model: SchulteModel, gridIndex: number) => {
     const gridStyle = {
       '--n': model.size,
       '--cell': `${cellMm.toFixed(2)}mm`,
@@ -42,12 +73,47 @@ export function SchulteTool() {
     } as CSSProperties;
 
     return (
+      <div className="schulte-block" key={gridIndex}>
+        {gridsPerPage > 1 ? (
+          <div className="schulte-caption">
+            <span className="schulte-caption-label">
+              {t('schulte.gridLabel', { n: gridIndex + 1 })}
+            </span>
+            {showRecord ? (
+              <>
+                <span className="record-item">
+                  <span>{t('schulte.record.time')}</span>
+                  <span className="meta-line" />
+                </span>
+                <span className="record-item">
+                  <span>{t('schulte.record.errors')}</span>
+                  <span className="meta-line" />
+                </span>
+              </>
+            ) : null}
+          </div>
+        ) : null}
+        <div className="schulte-grid" style={gridStyle}>
+          {model.numbers.map((number, index) => (
+            <div
+              key={`${number}-${index}`}
+              className={`schulte-cell${centerMark && index === centerIndex ? ' center' : ''}`}
+            >
+              {number}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const renderSheet = (models: SchulteModel[], sheetIndex: number) => (
     <div className="sheet">
       <div className="sheet-inner">
         <div className="sheet-header">
           <h1 className="sheet-title">{title.trim() || t('schulte.titleDefault')}</h1>
           {showRecord ? (
-            <div className="schulte-record">
+            <div className={`schulte-record${gridsPerPage > 1 ? ' is-compact' : ''}`}>
               <div className="record-item">
                 <span>{t('schulte.record.name')}</span>
                 <span className="meta-line" />
@@ -56,39 +122,36 @@ export function SchulteTool() {
                 <span>{t('schulte.record.date')}</span>
                 <span className="meta-line" />
               </div>
-              <div className="record-item">
-                <span>{t('schulte.record.time')}</span>
-                <span className="meta-line" />
-              </div>
-              <div className="record-item">
-                <span>{t('schulte.record.errors')}</span>
-                <span className="meta-line" />
-              </div>
+              {gridsPerPage === 1 ? (
+                <>
+                  <div className="record-item">
+                    <span>{t('schulte.record.time')}</span>
+                    <span className="meta-line" />
+                  </div>
+                  <div className="record-item">
+                    <span>{t('schulte.record.errors')}</span>
+                    <span className="meta-line" />
+                  </div>
+                </>
+              ) : null}
             </div>
           ) : null}
         </div>
 
-        <div className="schulte-grid-wrap">
-          <div className="schulte-grid" style={gridStyle}>
-            {model.numbers.map((number, index) => (
-              <div
-                key={`${number}-${index}`}
-                className={`schulte-cell${centerMark && index === centerIndex ? ' center' : ''}`}
-              >
-                {number}
-              </div>
-            ))}
-          </div>
+        <div
+          className={`schulte-grids cols-${columns}`}
+          style={{ '--gap': `${GAP_MM}mm` } as CSSProperties}
+        >
+          {models.map((model, gridIndex) => renderGrid(model, gridIndex))}
         </div>
 
         {showInstructions ? (
           <div className="schulte-instructions">{t('schulte.instructions')}</div>
         ) : null}
-        <SheetFooter seed={sheetSeed(seed, index, batchMode)} />
+        <SheetFooter seed={sheetSeed(seed, sheetIndex, batchMode)} />
       </div>
     </div>
-    );
-  };
+  );
 
   return (
     <div className="tool-page">
@@ -113,6 +176,22 @@ export function SchulteTool() {
                   onChange={(value) => setSize(Number(value) as SchulteSize)}
                 />
               </Field>
+              <Field label={t('schulte.perPage')} help={t('schulte.perPageHint')}>
+                <SegmentedControl
+                  label={t('schulte.perPage')}
+                  value={String(gridsPerPage)}
+                  options={GRIDS_PER_PAGE.map((value) => ({
+                    value: String(value),
+                    label: t(`schulte.perPage.${value}`),
+                  }))}
+                  onChange={(value) => setGridsPerPage(Number(value) as GridsPerPage)}
+                />
+              </Field>
+              {tooSmall ? (
+                <p className="warning">
+                  {t('schulte.tooSmall', { mm: cellMm.toFixed(1) })}
+                </p>
+              ) : null}
             </div>
 
             <div className="settings-group">
@@ -160,7 +239,7 @@ export function SchulteTool() {
               </span>
               <span>{t('common.previewNote')}</span>
             </div>
-            <PaperList sheets={models.map((model, index) => renderSheet(model, index))} />
+            <PaperList sheets={pages.map((models, index) => renderSheet(models, index))} />
           </section>
 
           <aside className="actions-panel">

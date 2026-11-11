@@ -1001,6 +1001,10 @@ svg {
   font-size: 10pt;
 }
 
+.schulte-record.is-compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .record-item {
   display: flex;
   align-items: baseline;
@@ -1013,13 +1017,63 @@ svg {
   min-width: 10mm;
 }
 
-.schulte-grid-wrap {
-  display: flex;
+.schulte-grids {
+  display: grid;
   flex: 1 1 auto;
-  align-items: center;
+  gap: var(--gap, 6mm);
+  align-content: center;
   justify-content: center;
   min-height: 0;
-  padding: 6mm 0;
+  padding: 2mm 0;
+}
+
+.schulte-grids.cols-1 {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+}
+
+.schulte-grids.cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: center;
+  justify-items: center;
+}
+
+.schulte-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2mm;
+  min-width: 0;
+}
+
+.schulte-caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2mm 5mm;
+  width: 100%;
+  max-width: 100%;
+  color: #333333;
+  font-size: 8.5pt;
+  line-height: 1.4;
+}
+
+.schulte-caption-label {
+  color: #555555;
+  font-variant-numeric: tabular-nums;
+}
+
+.schulte-caption .schulte-record.is-compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.record-item {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.schulte-caption .record-item .meta-line {
+  min-width: 8mm;
 }
 
 .schulte-grid {

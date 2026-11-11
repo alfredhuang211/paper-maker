@@ -142,6 +142,13 @@ export const zh = {
 
   'schulte.size': '方格规格',
   'schulte.sizeHint': '5×5 为标准规格；幼儿可从 3×3 开始。',
+  'schulte.perPage': '每页方格数',
+  'schulte.perPageHint': '一张 A4 上排布多个方格，适合一次多组训练或课堂分发。',
+  'schulte.gridLabel': '第 {n} 个',
+  'schulte.tooSmall': '当前规格下每个方格偏小（约 {mm} mm/格），建议减少每页方格数或选择更小规格。',
+  'schulte.perPage.1': '1 个',
+  'schulte.perPage.2': '2 个',
+  'schulte.perPage.4': '4 个',
   'schulte.showRecord': '训练记录栏',
   'schulte.showInstructions': '打印训练说明',
   'schulte.centerMark': '中心标记',

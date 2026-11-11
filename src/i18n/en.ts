@@ -144,6 +144,13 @@ export const en: Record<MessageKey, string> = {
 
   'schulte.size': 'Grid size',
   'schulte.sizeHint': '5×5 is the standard size; start with 3×3 for young children.',
+  'schulte.perPage': 'Grids per page',
+  'schulte.perPageHint': 'Fit several grids on one A4 page for multiple sets or classroom handouts.',
+  'schulte.gridLabel': 'Grid {n}',
+  'schulte.tooSmall': 'Each cell is small at this size (about {mm} mm). Reduce grids per page or pick a smaller grid.',
+  'schulte.perPage.1': '1',
+  'schulte.perPage.2': '2',
+  'schulte.perPage.4': '4',
   'schulte.showRecord': 'Training record row',
   'schulte.showInstructions': 'Print instructions',
   'schulte.centerMark': 'Center mark',
