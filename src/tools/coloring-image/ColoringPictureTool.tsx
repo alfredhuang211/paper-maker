@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useI18n } from '../../i18n';
 import { Field, SegmentedControl } from '../../components/ui/SegmentedControl';
 import { SwitchField } from '../../components/ui/SwitchField';
@@ -10,9 +10,18 @@ import { PaperList } from '../../components/pattern/PaperFrame';
 import { PICTURE_ASSETS, assetUrl } from './assets';
 import { imageToLineArt, type PictureLineWeight } from './process';
 
+interface CustomPicture {
+  kind: 'local' | 'url';
+  title: string;
+  src: string;
+  sourceUrl?: string;
+  fileName?: string;
+}
+
 export function ColoringPictureTool() {
   const { t, lang } = useI18n();
   const [assetId, setAssetId] = useState(PICTURE_ASSETS[0].id);
+  const [custom, setCustom] = useState<CustomPicture | null>(null);
   const [lineWeight, setLineWeight] = useState<PictureLineWeight>('medium');
   const [title, setTitle] = useState('');
   const [showName, setShowName] = useState(true);
@@ -20,19 +29,34 @@ export function ColoringPictureTool() {
   const [processed, setProcessed] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [urlInput, setUrlInput] = useState('');
+  const [urlLoading, setUrlLoading] = useState(false);
+  const [urlError, setUrlError] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const objectUrlRef = useRef<string | null>(null);
 
-  const asset = useMemo(
+  const builtIn = useMemo(
     () => PICTURE_ASSETS.find((item) => item.id === assetId) ?? PICTURE_ASSETS[0],
     [assetId],
   );
-  const assetTitle = asset.title[lang];
+  const src = custom?.src ?? assetUrl(builtIn);
+  const assetTitle = custom?.title ?? builtIn.title[lang];
+
+  const revokeObjectUrl = () => {
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = null;
+    }
+  };
+
+  useEffect(() => () => revokeObjectUrl(), []);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
     setError(false);
     setProcessed('');
-    imageToLineArt(assetUrl(asset), lineWeight)
+    imageToLineArt(src, lineWeight)
       .then((url) => {
         if (!active) return;
         setProcessed(url);
@@ -46,9 +70,85 @@ export function ColoringPictureTool() {
     return () => {
       active = false;
     };
-  }, [asset, lineWeight]);
+  }, [src, lineWeight]);
+
+  const selectBuiltIn = (id: string) => {
+    revokeObjectUrl();
+    setCustom(null);
+    setAssetId(id);
+    setUrlError(false);
+  };
+
+  const loadLocalFile = (file: File | undefined) => {
+    if (!file) return;
+    try {
+      const objectUrl = URL.createObjectURL(file);
+      revokeObjectUrl();
+      objectUrlRef.current = objectUrl;
+      const fileName = file.name.replace(/\.[^.]+$/, '') || t('picture.userTitle');
+      setCustom({
+        kind: 'local',
+        title: fileName,
+        src: objectUrl,
+        fileName: file.name,
+      });
+      setAssetId('custom');
+      setUrlError(false);
+    } catch {
+      setUrlError(true);
+    }
+  };
+
+  const loadUrl = async () => {
+    const raw = urlInput.trim();
+    if (!raw) return;
+    let parsed: URL;
+    try {
+      parsed = new URL(raw);
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') throw new Error('bad protocol');
+    } catch {
+      setUrlError(true);
+      return;
+    }
+
+    setUrlLoading(true);
+    setUrlError(false);
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 15000);
+    try {
+      const response = await fetch(parsed.toString(), {
+        mode: 'cors',
+        credentials: 'omit',
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error('bad response');
+      const blob = await response.blob();
+      if (blob.type && !blob.type.startsWith('image/')) throw new Error('not an image');
+      const objectUrl = URL.createObjectURL(blob);
+      revokeObjectUrl();
+      objectUrlRef.current = objectUrl;
+      const pathName = decodeURIComponent(parsed.pathname.split('/').pop() ?? '');
+      const fileName = pathName.replace(/\.[^.]+$/, '') || t('picture.userTitle');
+      setCustom({
+        kind: 'url',
+        title: fileName,
+        src: objectUrl,
+        sourceUrl: parsed.toString(),
+      });
+      setAssetId('custom');
+      setUrlInput('');
+    } catch {
+      setUrlError(true);
+    } finally {
+      window.clearTimeout(timeout);
+      setUrlLoading(false);
+    }
+  };
 
   const titleText = title.trim() || assetTitle;
+  const credit = custom
+    ? `${t('picture.source')}: ${assetTitle} · ${t('picture.userLicense')}`
+    : `${t('picture.source')}: ${assetTitle} · ${t('picture.builtInSource')}`;
 
   const sheet = (
     <div className="sheet">
@@ -79,12 +179,10 @@ export function ColoringPictureTool() {
           )}
         </div>
 
-        <div className="picture-credit">
-          {t('picture.source')}: {assetTitle} · {t('picture.license')}
-        </div>
+        <div className="picture-credit">{credit}</div>
         <div className="sheet-footer">
           <span>{t('common.footer')}</span>
-          <span>Openclipart · Public Domain</span>
+          <span>{custom ? t('picture.userLicense') : 'Public Domain'}</span>
         </div>
       </div>
     </div>
@@ -109,8 +207,8 @@ export function ColoringPictureTool() {
                     key={item.id}
                     type="button"
                     className="picture-option"
-                    aria-pressed={item.id === assetId}
-                    onClick={() => setAssetId(item.id)}
+                    aria-pressed={!custom && item.id === assetId}
+                    onClick={() => selectBuiltIn(item.id)}
                   >
                     <img src={assetUrl(item)} alt={item.title[lang]} loading="lazy" />
                     <span>{item.title[lang]}</span>
@@ -118,6 +216,34 @@ export function ColoringPictureTool() {
                 ))}
               </div>
               <p className="action-note">{t('picture.galleryHint')}</p>
+            </div>
+
+            <div className="settings-group">
+              <span className="field-label">{t('picture.custom')}</span>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={(event) => {
+                  loadLocalFile(event.target.files?.[0]);
+                  event.target.value = '';
+                }}
+              />
+              <Button variant="secondary" block onClick={() => fileInputRef.current?.click()}>
+                {t('picture.upload')}
+              </Button>
+              <TextField
+                label={t('picture.urlLabel')}
+                value={urlInput}
+                placeholder="https://…"
+                onChange={setUrlInput}
+              />
+              <Button variant="secondary" block disabled={urlLoading} onClick={() => void loadUrl()}>
+                {t('picture.loadUrl')}
+              </Button>
+              {urlError ? <p className="warning">{t('picture.urlError')}</p> : null}
+              <p className="action-note">{t('picture.customHint')}</p>
             </div>
 
             <div className="settings-group">
@@ -150,9 +276,17 @@ export function ColoringPictureTool() {
               />
               <p className="action-note">{t('picture.hint')}</p>
               <p className="action-note">
-                <a href={asset.source} target="_blank" rel="noreferrer">
-                  {assetTitle} · Openclipart
-                </a>
+                {custom?.kind === 'url' && custom.sourceUrl ? (
+                  <a href={custom.sourceUrl} target="_blank" rel="noreferrer">
+                    {t('picture.sourceLabel')}: {new URL(custom.sourceUrl).hostname}
+                  </a>
+                ) : custom?.kind === 'local' ? (
+                  `${t('picture.sourceLabel')}: ${t('picture.localSource')}${custom.fileName ? ` · ${custom.fileName}` : ''}`
+                ) : (
+                  <a href={builtIn.source} target="_blank" rel="noreferrer">
+                    {t('picture.sourceLabel')}: Openclipart
+                  </a>
+                )}
               </p>
             </div>
           </aside>
@@ -170,14 +304,19 @@ export function ColoringPictureTool() {
           <aside className="actions-panel">
             <div className="panel">
               <div className="action-pair">
-                <Button variant="primary" block disabled={loading || error} onClick={() => window.print()}>
+                <Button
+                  variant="primary"
+                  block
+                  disabled={loading || error || urlLoading}
+                  onClick={() => window.print()}
+                >
                   <IconPrint />
                   {t('common.print')}
                 </Button>
                 <Button
                   variant="primary"
                   block
-                  disabled={loading || error}
+                  disabled={loading || error || urlLoading}
                   title={t('common.pdfHint')}
                   aria-label={t('common.downloadPdf')}
                   onClick={() => window.print()}
