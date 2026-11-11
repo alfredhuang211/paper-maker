@@ -1160,8 +1160,8 @@ svg {
   display: grid;
   grid-template-columns: repeat(var(--n), var(--cell));
   grid-template-rows: repeat(var(--n), var(--cell));
-  border-top: 0.5mm solid #000000;
-  border-left: 0.5mm solid #000000;
+  border-top: 0.7mm solid #000000;
+  border-left: 0.7mm solid #000000;
   background: #ffffff;
 }
 
@@ -1178,11 +1178,11 @@ svg {
 }
 
 .sudoku-cell.box-right {
-  border-right-width: 0.5mm;
+  border-right-width: 0.7mm;
 }
 
 .sudoku-cell.box-bottom {
-  border-bottom-width: 0.5mm;
+  border-bottom-width: 0.7mm;
 }
 
 .sudoku-note {
