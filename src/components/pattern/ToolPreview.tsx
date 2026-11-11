@@ -4,6 +4,7 @@ import { generateMathWorksheet, questionText } from '../../tools/math/engine';
 import { generateSchulte } from '../../tools/schulte/engine';
 import { generateMaze } from '../../tools/maze/engine';
 import { generateSudoku } from '../../tools/sudoku/engine';
+import { PICTURE_ASSETS, assetUrl } from '../../tools/coloring-image/assets';
 
 const coloringPreview = generateColoring({
   theme: 'mandala',
@@ -66,6 +67,21 @@ export function ToolPreview({ slug }: { slug: string }) {
             ),
           )}
         </g>
+      </PageFrame>
+    );
+  }
+
+  if (slug === 'picture') {
+    return (
+      <PageFrame title={t('home.picture.name')}>
+        <image
+          href={assetUrl(PICTURE_ASSETS[0])}
+          x="15"
+          y="42"
+          width="180"
+          height="230"
+          preserveAspectRatio="xMidYMid meet"
+        />
       </PageFrame>
     );
   }

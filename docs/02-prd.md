@@ -304,6 +304,7 @@ M2 结束时：三个工具的 P0 需求全部可用，通过打印验收清单�
 | 舒尔特方格 | 标准注意力训练方格，打印即用 | 3×3–7×7；数字 1–n²；每页 1/2/4 个；训练记录栏；说明文字；种子 | [schulte-grid.md](04-features/schulte-grid.md) |
 | 迷宫 | 程序化连通迷宫，打印即玩 | 正方形/长方形/圆形/三角形；10/15/20/30 尺寸；线条粗细；种子；批量 | [maze.md](04-features/maze.md) |
 | 数独 | 标准/迷你数独，一页多题 | 4×4/6×6/9×9；简单/中等/困难；每页 1/2/4 题；种子；批量 | [sudoku.md](04-features/sudoku.md) |
+| 涂色画 | 公共领域图片转线稿，打印涂色 | 8 张 Public Domain 图片；细/中/粗线条；A4 打印/PDF；来源许可展示 | [coloring-picture.md](04-features/coloring-picture.md) |
 
 ### 6.2 功能优先级总表
 
