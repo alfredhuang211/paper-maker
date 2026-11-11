@@ -60,6 +60,18 @@ function Thumb({ slug }: { slug: string }): ReactNode {
     );
   }
 
+  if (slug === 'maze') {
+    return (
+      <svg viewBox="0 0 180 120" aria-hidden="true">
+        <g fill="none" stroke="var(--color-ink-muted)" strokeWidth="1.4" strokeLinecap="square">
+          <rect x="38" y="12" width="104" height="96" />
+          <path d="M38 32h28v18H38M66 50h22v20H66M88 70h24v18H88M112 50v-18h18M130 32h12M142 32v58M142 90h-18v-20M124 70h-12M112 70V50M112 50H92M92 50v20M92 70H76" />
+        </g>
+        <path d="M90 102v8M90 110l-3-4M90 110l3-4" stroke="var(--color-accent)" strokeWidth="1.5" fill="none" />
+      </svg>
+    );
+  }
+
   return (
     <svg viewBox="0 0 180 120" aria-hidden="true">
       <g fill="none" stroke="var(--color-ink-muted)" strokeWidth="1.1">
