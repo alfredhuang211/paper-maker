@@ -88,5 +88,39 @@ export async function imageToLineArt(src: string, weight: PictureLineWeight): Pr
     pixels[offset + 3] = 255;
   }
   context.putImageData(imageData, 0, 0);
-  return canvas.toDataURL('image/png');
+
+  // Trim the surrounding white margin so the drawing fills the printable area.
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (!dilated[y * width + x]) continue;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+  }
+  if (maxX < 0) return canvas.toDataURL('image/png');
+
+  const margin = Math.max(8, Math.round(Math.min(width, height) * 0.012));
+  const cropX = Math.max(0, minX - margin);
+  const cropY = Math.max(0, minY - margin);
+  const cropWidth = Math.min(width, maxX + margin + 1) - cropX;
+  const cropHeight = Math.min(height, maxY + margin + 1) - cropY;
+  if (cropWidth >= width - 2 && cropHeight >= height - 2) {
+    return canvas.toDataURL('image/png');
+  }
+
+  const output = document.createElement('canvas');
+  output.width = cropWidth;
+  output.height = cropHeight;
+  const outputContext = output.getContext('2d');
+  if (!outputContext) throw new Error('Canvas 2D context unavailable');
+  outputContext.fillStyle = '#ffffff';
+  outputContext.fillRect(0, 0, cropWidth, cropHeight);
+  outputContext.drawImage(canvas, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+  return output.toDataURL('image/png');
 }
