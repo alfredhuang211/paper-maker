@@ -60,6 +60,45 @@ function Thumb({ slug }: { slug: string }): ReactNode {
     );
   }
 
+  if (slug === 'sudoku') {
+    return (
+      <svg viewBox="0 0 180 120" aria-hidden="true">
+        <g transform="translate(48 6)">
+          <rect x="0" y="0" width="84" height="84" fill="none" stroke="var(--color-ink-muted)" strokeWidth="1.2" />
+          {Array.from({ length: 81 }).map((_, index) => {
+            const row = Math.floor(index / 9);
+            const col = index % 9;
+            return (
+              <g key={index}>
+                <rect
+                  x={col * 9.33}
+                  y={row * 9.33}
+                  width="9.33"
+                  height="9.33"
+                  fill="none"
+                  stroke="var(--color-line-strong)"
+                  strokeWidth="0.5"
+                />
+                {[2, 4, 12, 20, 24, 31, 40, 49, 56, 63, 70, 78].includes(index) ? (
+                  <text
+                    x={col * 9.33 + 4.7}
+                    y={row * 9.33 + 6.6}
+                    textAnchor="middle"
+                    fill="var(--color-ink-secondary)"
+                    fontFamily="inherit"
+                    fontSize="5.5"
+                  >
+                    {((index * 7) % 9) + 1}
+                  </text>
+                ) : null}
+              </g>
+            );
+          })}
+        </g>
+      </svg>
+    );
+  }
+
   if (slug === 'maze') {
     return (
       <svg viewBox="0 0 180 120" aria-hidden="true">

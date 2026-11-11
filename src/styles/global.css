@@ -1120,6 +1120,78 @@ svg {
   line-height: 1.5;
 }
 
+/* Sudoku sheet */
+
+.sudoku-grids {
+  display: grid;
+  flex: 1 1 auto;
+  gap: var(--gap, 6mm);
+  align-content: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+.sudoku-grids.cols-1 {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+}
+
+.sudoku-grids.cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: center;
+  justify-items: center;
+}
+
+.sudoku-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2mm;
+  min-width: 0;
+}
+
+.sudoku-caption {
+  color: #333333;
+  font-size: 8.5pt;
+  line-height: 1.4;
+}
+
+.sudoku-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--n), var(--cell));
+  grid-template-rows: repeat(var(--n), var(--cell));
+  border-top: 0.5mm solid #000000;
+  border-left: 0.5mm solid #000000;
+  background: #ffffff;
+}
+
+.sudoku-cell {
+  display: grid;
+  place-items: center;
+  width: var(--cell);
+  height: var(--cell);
+  border-right: 0.25mm solid #000000;
+  border-bottom: 0.25mm solid #000000;
+  font-size: var(--cell-font);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.sudoku-cell.box-right {
+  border-right-width: 0.5mm;
+}
+
+.sudoku-cell.box-bottom {
+  border-bottom-width: 0.5mm;
+}
+
+.sudoku-note {
+  flex: 0 0 auto;
+  padding-top: 2mm;
+  color: #555555;
+  font-size: 8.5pt;
+}
+
 /* Maze sheet */
 
 .maze-art {

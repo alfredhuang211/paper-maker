@@ -4,9 +4,10 @@ import { ColoringTool } from './coloring/ColoringTool';
 import { MathTool } from './math/MathTool';
 import { SchulteTool } from './schulte/SchulteTool';
 import { MazeTool } from './maze/MazeTool';
+import { SudokuTool } from './sudoku/SudokuTool';
 
 export interface ToolDefinition {
-  slug: 'coloring' | 'math' | 'schulte' | 'maze';
+  slug: 'coloring' | 'math' | 'schulte' | 'maze' | 'sudoku';
   nameKey: MessageKey;
   descKey: MessageKey;
   Component: ComponentType;
@@ -36,6 +37,12 @@ export const TOOLS: ToolDefinition[] = [
     nameKey: 'home.maze.name',
     descKey: 'home.maze.desc',
     Component: MazeTool,
+  },
+  {
+    slug: 'sudoku',
+    nameKey: 'home.sudoku.name',
+    descKey: 'home.sudoku.desc',
+    Component: SudokuTool,
   },
 ];
 
