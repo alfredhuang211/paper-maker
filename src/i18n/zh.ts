@@ -192,7 +192,7 @@ export const zh = {
   'picture.urlSource': '图片 URL',
   'picture.sourceLabel': '来源',
   'picture.builtInSource': 'Openclipart · Public Domain',
-  'picture.galleryHint': '图片来自 Openclipart（Public Domain），可自由使用。',
+  'picture.galleryHint': '内置图库来自 Openclipart 及 Pixabay/Unsplash/Pexels；许可见每张图片的来源标注。',
   'picture.lineWeight': '线条粗细',
   'picture.line.thin': '细',
   'picture.line.medium': '中',

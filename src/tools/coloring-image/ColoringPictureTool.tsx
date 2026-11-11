@@ -42,6 +42,7 @@ export function ColoringPictureTool() {
     [assetId],
   );
   const src = custom?.src ?? assetUrl(builtIn);
+  const builtInFormat = builtIn.format ?? 'svg';
   const assetTitle = custom?.title ?? builtIn.title[lang];
 
   const revokeObjectUrl = () => {
@@ -58,7 +59,7 @@ export function ColoringPictureTool() {
     setLoading(true);
     setError(false);
     setProcessed('');
-    imageToLineArt(src, lineWeight, { format: custom?.format ?? 'svg' })
+    imageToLineArt(src, lineWeight, { format: custom?.format ?? builtInFormat })
       .then((url) => {
         if (!active) return;
         setProcessed(url);
@@ -72,7 +73,7 @@ export function ColoringPictureTool() {
     return () => {
       active = false;
     };
-  }, [src, lineWeight, custom?.format]);
+  }, [src, lineWeight, custom?.format, builtInFormat]);
 
   useEffect(() => {
     let active = true;
@@ -82,7 +83,7 @@ export function ColoringPictureTool() {
         try {
           const url = await imageToLineArt(assetUrl(item), lineWeight, {
             maxSize: 480,
-            format: 'svg',
+            format: item.format ?? 'svg',
           });
           return [item.id, url] as const;
         } catch {
@@ -177,7 +178,7 @@ export function ColoringPictureTool() {
   const titleText = title.trim() || assetTitle;
   const credit = custom
     ? `${t('picture.source')}: ${assetTitle} · ${t('picture.userLicense')}`
-    : `${t('picture.source')}: ${assetTitle} · ${t('picture.builtInSource')}`;
+    : `${t('picture.source')}: ${assetTitle} · ${builtIn.license}`;
 
   const sheet = (
     <div className="sheet">
@@ -211,7 +212,7 @@ export function ColoringPictureTool() {
         <div className="picture-credit">{credit}</div>
         <div className="sheet-footer">
           <span>{t('common.footer')}</span>
-          <span>{custom ? t('picture.userLicense') : 'Public Domain'}</span>
+          <span>{custom ? t('picture.userLicense') : builtIn.license}</span>
         </div>
       </div>
     </div>
@@ -317,7 +318,7 @@ export function ColoringPictureTool() {
                   `${t('picture.sourceLabel')}: ${t('picture.localSource')}${custom.fileName ? ` · ${custom.fileName}` : ''}`
                 ) : (
                   <a href={builtIn.source} target="_blank" rel="noreferrer">
-                    {t('picture.sourceLabel')}: Openclipart
+                    {t('picture.sourceLabel')}: {builtIn.sourceLabel ?? 'Openclipart'}
                   </a>
                 )}
               </p>

@@ -1,8 +1,10 @@
 # Image attributions
 
-All images in this directory come from [Openclipart](https://openclipart.org/) and are
-released as **Public Domain / CC0 1.0**. They may be used, modified, and redistributed
-freely for any purpose.
+Only **derived line-art images** are bundled in this directory. Original source
+images are not redistributed by the application; the source links below are kept
+for provenance and license review.
+
+## Openclipart — Public Domain / CC0
 
 | Local file | Title | Source |
 | --- | --- | --- |
@@ -21,5 +23,14 @@ freely for any purpose.
 | `silly-walks.svg` | Silly Walks | https://openclipart.org/detail/352456/silly-walks |
 | `fishbowl.svg` | Fishes in a Bowl | https://openclipart.org/detail/341015/fishes-in-a-bowl |
 
-The application converts these images locally in the browser into black-and-white line
-art; the original files are bundled and never uploaded.
+## Free-license sources (not CC0)
+
+These images are used under the respective site licenses. Attribution is not
+required by the licenses, but source pages are recorded for transparency.
+Derived line art is provided; the original source files are not bundled.
+
+| Local file | Title | Source | License |
+| --- | --- | --- | --- |
+| `pixabay-animal.png` | Coloring Page, Animal | https://pixabay.com/vectors/coloring-page-coloring-book-animal-9943299/ | [Pixabay Content License](https://pixabay.com/service/license-summary/) |
+| `unsplash-turtle.png` | Sea turtle and fish ocean waves | https://unsplash.com/illustrations/sea-turtle-and-fish-ocean-waves-Svqpe27YoFU | [Unsplash License](https://unsplash.com/license) |
+| `pexels-jellyfish.png` | Black And White Photo Of A Jellyfish | https://www.pexels.com/photo/black-and-white-photo-of-a-jellyfish-18846181/ | [Pexels License](https://www.pexels.com/license/) |

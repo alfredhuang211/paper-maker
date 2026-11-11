@@ -4,6 +4,8 @@ export interface PictureAsset {
   file: string;
   source: string;
   license: string;
+  format?: 'svg' | 'raster';
+  sourceLabel?: string;
 }
 
 export const PICTURE_ASSETS: PictureAsset[] = [
@@ -104,6 +106,33 @@ export const PICTURE_ASSETS: PictureAsset[] = [
     file: 'fishbowl.svg',
     source: 'https://openclipart.org/detail/341015/fishes-in-a-bowl',
     license: 'Public Domain (Openclipart)',
+  },
+  {
+    id: 'pixabay-animal',
+    title: { zh: '动物涂色页', en: 'Animal coloring' },
+    file: 'pixabay-animal.png',
+    source: 'https://pixabay.com/vectors/coloring-page-coloring-book-animal-9943299/',
+    license: 'Pixabay Content License',
+    format: 'raster',
+    sourceLabel: 'Pixabay',
+  },
+  {
+    id: 'unsplash-turtle',
+    title: { zh: '海龟与海浪', en: 'Sea turtle and waves' },
+    file: 'unsplash-turtle.png',
+    source: 'https://unsplash.com/illustrations/sea-turtle-and-fish-ocean-waves-Svqpe27YoFU',
+    license: 'Unsplash License',
+    format: 'raster',
+    sourceLabel: 'Unsplash',
+  },
+  {
+    id: 'pexels-jellyfish',
+    title: { zh: '水母', en: 'Jellyfish' },
+    file: 'pexels-jellyfish.png',
+    source: 'https://www.pexels.com/photo/black-and-white-photo-of-a-jellyfish-18846181/',
+    license: 'Pexels License',
+    format: 'raster',
+    sourceLabel: 'Pexels',
   },
 ];
 

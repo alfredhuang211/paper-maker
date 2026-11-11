@@ -194,7 +194,7 @@ export const en: Record<MessageKey, string> = {
   'picture.urlSource': 'Image URL',
   'picture.sourceLabel': 'Source',
   'picture.builtInSource': 'Openclipart · Public Domain',
-  'picture.galleryHint': 'Images are from Openclipart (Public Domain) and free to use.',
+  'picture.galleryHint': 'Built-in images come from Openclipart plus Pixabay/Unsplash/Pexels; see each image for its license.',
   'picture.lineWeight': 'Line weight',
   'picture.line.thin': 'Thin',
   'picture.line.medium': 'Medium',
