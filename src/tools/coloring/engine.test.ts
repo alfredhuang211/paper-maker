@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { generateColoring, LINE_WIDTH_MM, type ColoringTheme } from './engine';
 
-const themes: ColoringTheme[] = ['symmetry', 'mandala', 'geometric'];
+const themes: ColoringTheme[] = [
+  'symmetry',
+  'mandala',
+  'geometric',
+  'kaleidoscope',
+  'stainedGlass',
+  'waves',
+  'skyline',
+];
 
 describe('coloring engine', () => {
   it.each(themes)('generates elements for the %s theme', (theme) => {
@@ -69,19 +77,22 @@ describe('coloring engine', () => {
     expect(model.strokeWidth).toBe(LINE_WIDTH_MM.thick);
   });
 
-  it('keeps circles inside the drawing area', () => {
+  it.each(themes)('keeps %s geometry inside the drawing area', (theme) => {
     const model = generateColoring({
-      theme: 'mandala',
+      theme,
       complexity: 5,
       lineWeight: 'medium',
       seed: 'seed',
     });
     for (const element of model.elements) {
-      if (element.kind !== 'circle') continue;
-      expect(element.cx - element.r).toBeGreaterThanOrEqual(0);
-      expect(element.cx + element.r).toBeLessThanOrEqual(model.width);
-      expect(element.cy - element.r).toBeGreaterThanOrEqual(0);
-      expect(element.cy + element.r).toBeLessThanOrEqual(model.height);
+      if (element.kind === 'circle') {
+        expect(element.cx - element.r).toBeGreaterThanOrEqual(0);
+        expect(element.cx + element.r).toBeLessThanOrEqual(model.width);
+        expect(element.cy - element.r).toBeGreaterThanOrEqual(0);
+        expect(element.cy + element.r).toBeLessThanOrEqual(model.height);
+      } else {
+        expect(element.d).not.toContain('NaN');
+      }
     }
   });
 });

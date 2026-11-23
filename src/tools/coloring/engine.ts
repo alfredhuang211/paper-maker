@@ -1,6 +1,13 @@
 import { createRng, type Rng } from '../../core/random';
 
-export type ColoringTheme = 'symmetry' | 'mandala' | 'geometric';
+export type ColoringTheme =
+  | 'symmetry'
+  | 'mandala'
+  | 'geometric'
+  | 'kaleidoscope'
+  | 'stainedGlass'
+  | 'waves'
+  | 'skyline';
 export type LineWeight = 'thin' | 'medium' | 'thick';
 
 export interface ColoringParams {
@@ -191,6 +198,303 @@ function geometric(rng: Rng, complexity: number): ColoringElement[] {
   return elements;
 }
 
+
+function polygonPath(points: [number, number][]): string {
+  if (points.length === 0) return '';
+  const [first, ...rest] = points;
+  return `M ${first[0]} ${first[1]} ${rest.map(([x, y]) => `L ${x} ${y}`).join(' ')} Z`;
+}
+
+function rectPath(x: number, y: number, width: number, height: number): string {
+  return `M ${round(x)} ${round(y)} L ${round(x + width)} ${round(y)} L ${round(x + width)} ${round(y + height)} L ${round(x)} ${round(y + height)} Z`;
+}
+
+function kaleidoscope(rng: Rng, complexity: number): ColoringElement[] {
+  const elements: ColoringElement[] = [];
+  const folds = 8 + complexity * 2;
+  const rings = 3 + Math.floor(complexity / 2);
+  const minRadius = 14;
+  const maxRadius = 85;
+
+  elements.push({ kind: 'circle', cx: CX, cy: CY, r: 4 });
+  elements.push({ kind: 'circle', cx: CX, cy: CY, r: 10 });
+
+  const star = Array.from({ length: folds }, (_, index) => {
+    const angle = (index / folds) * TWO_PI - Math.PI / 2;
+    return point(index % 2 === 0 ? 21 : 9, angle);
+  });
+  elements.push({ kind: 'path', d: polygonPath(star) });
+
+  for (let ring = 0; ring < rings; ring += 1) {
+    const radius = minRadius + ((maxRadius - minRadius) * ring) / rings;
+    const outer = minRadius + ((maxRadius - minRadius) * (ring + 1)) / rings;
+    const step = TWO_PI / folds;
+    const offset = ring % 2 === 0 ? 0 : step / 2;
+    const spread = step * (0.25 + rng.next() * 0.07);
+
+    for (let index = 0; index < folds; index += 1) {
+      const angle = index * step + offset;
+      const [x0, y0] = point(radius, angle - spread);
+      const [x1, y1] = point(radius, angle + spread);
+      const [tipX, tipY] = point(outer, angle);
+      elements.push({
+        kind: 'path',
+        d: `M ${x0} ${y0} L ${tipX} ${tipY} L ${x1} ${y1} Z`,
+      });
+
+      const [ix0, iy0] = point(radius * 0.86, angle);
+      const [ix1, iy1] = point((radius + outer) / 2, angle + spread * 0.58);
+      const [ix2, iy2] = point(outer * 0.86, angle);
+      const [ix3, iy3] = point((radius + outer) / 2, angle - spread * 0.58);
+      elements.push({
+        kind: 'path',
+        d: `M ${ix0} ${iy0} L ${ix1} ${iy1} L ${ix2} ${iy2} L ${ix3} ${iy3} Z`,
+      });
+
+      if (rng.next() < 0.35) {
+        const [dotX, dotY] = point(outer, angle);
+        elements.push({ kind: 'circle', cx: dotX, cy: dotY, r: 1.8 });
+      }
+    }
+
+    elements.push({ kind: 'circle', cx: CX, cy: CY, r: round(outer) });
+  }
+
+  elements.push({ kind: 'circle', cx: CX, cy: CY, r: maxRadius + 4 });
+  return elements;
+}
+
+function stainedGlass(rng: Rng, complexity: number): ColoringElement[] {
+  const elements: ColoringElement[] = [];
+  const margin = 10;
+  const columns = 4 + complexity;
+  const rows = 6 + complexity;
+  const cellWidth = (WIDTH - margin * 2) / columns;
+  const cellHeight = (HEIGHT - margin * 2) / rows;
+  const jitter = Math.min(cellWidth, cellHeight) * (0.24 + complexity * 0.012);
+  const vertices: [number, number][][] = [];
+
+  for (let row = 0; row <= rows; row += 1) {
+    const current: [number, number][] = [];
+    for (let column = 0; column <= columns; column += 1) {
+      const edge = row === 0 || row === rows || column === 0 || column === columns;
+      const x = margin + column * cellWidth + (edge ? 0 : (rng.next() * 2 - 1) * jitter);
+      const y = margin + row * cellHeight + (edge ? 0 : (rng.next() * 2 - 1) * jitter);
+      current.push([round(x), round(y)]);
+    }
+    vertices.push(current);
+  }
+
+  const borderRadius = 9;
+  elements.push({
+    kind: 'path',
+    d: `M ${margin + borderRadius} ${margin} L ${WIDTH - margin - borderRadius} ${margin} Q ${WIDTH - margin} ${margin} ${WIDTH - margin} ${margin + borderRadius} L ${WIDTH - margin} ${HEIGHT - margin - borderRadius} Q ${WIDTH - margin} ${HEIGHT - margin} ${WIDTH - margin - borderRadius} ${HEIGHT - margin} L ${margin + borderRadius} ${HEIGHT - margin} Q ${margin} ${HEIGHT - margin} ${margin} ${HEIGHT - margin - borderRadius} L ${margin} ${margin + borderRadius} Q ${margin} ${margin} ${margin + borderRadius} ${margin} Z`,
+  });
+
+  for (let row = 0; row < rows; row += 1) {
+    for (let column = 0; column < columns; column += 1) {
+      const a = vertices[row][column];
+      const b = vertices[row][column + 1];
+      const c = vertices[row + 1][column + 1];
+      const d = vertices[row + 1][column];
+      elements.push({ kind: 'path', d: polygonPath([a, b, c, d]) });
+
+      if (rng.next() < 0.24) {
+        const fromTop = rng.next() < 0.5;
+        const p1 = fromTop ? a : d;
+        const p2 = fromTop ? c : b;
+        elements.push({
+          kind: 'path',
+          d: `M ${p1[0]} ${p1[1]} L ${round((p1[0] + p2[0]) / 2 + (rng.next() * 2 - 1) * 5)} ${round((p1[1] + p2[1]) / 2 + (rng.next() * 2 - 1) * 5)} L ${p2[0]} ${p2[1]}`,
+        });
+      }
+    }
+  }
+
+  return elements;
+}
+
+function wavePoints(
+  baseY: number,
+  amplitude: number,
+  frequency: number,
+  phase: number,
+  offset: number,
+): [number, number][] {
+  const points: [number, number][] = [];
+  const step = 4;
+  for (let x = 10; x <= WIDTH - 10; x += step) {
+    const y = baseY + offset + Math.sin(x * frequency + phase) * amplitude;
+    points.push([round(x), round(y)]);
+  }
+  return points;
+}
+
+function pathFromPoints(points: [number, number][]): string {
+  if (points.length === 0) return '';
+  const [first, ...rest] = points;
+  return `M ${first[0]} ${first[1]} ${rest.map(([x, y]) => `L ${x} ${y}`).join(' ')}`;
+}
+
+function closedWaveBand(
+  baseY: number,
+  amplitude: number,
+  frequency: number,
+  phase: number,
+  height: number,
+): string {
+  const top = wavePoints(baseY, amplitude, frequency, phase, 0);
+  const bottom = wavePoints(baseY, amplitude, frequency, phase, height).reverse();
+  return `${pathFromPoints(top)} L ${bottom[0][0]} ${bottom[0][1]} ${bottom
+    .slice(1)
+    .map(([x, y]) => `L ${x} ${y}`)
+    .join(' ')} Z`;
+}
+
+function fishPath(x: number, y: number, scale: number): string {
+  return `M ${round(x - 7 * scale)} ${round(y)} C ${round(x - 3 * scale)} ${round(y - 4 * scale)} ${round(x + 5 * scale)} ${round(y - 4 * scale)} ${round(x + 8 * scale)} ${round(y)} C ${round(x + 5 * scale)} ${round(y + 4 * scale)} ${round(x - 3 * scale)} ${round(y + 4 * scale)} ${round(x - 7 * scale)} ${round(y)} Z M ${round(x - 7 * scale)} ${round(y)} L ${round(x - 12 * scale)} ${round(y - 4 * scale)} L ${round(x - 11 * scale)} ${round(y)} L ${round(x - 12 * scale)} ${round(y + 4 * scale)} Z`;
+}
+
+function waves(rng: Rng, complexity: number): ColoringElement[] {
+  const elements: ColoringElement[] = [];
+  const sunX = CX;
+  const sunY = 45;
+  const sunRadius = 16;
+
+  elements.push({ kind: 'circle', cx: sunX, cy: sunY, r: sunRadius });
+  elements.push({ kind: 'circle', cx: sunX, cy: sunY, r: sunRadius * 0.58 });
+  for (let index = 0; index < 12; index += 1) {
+    const angle = (index / 12) * TWO_PI;
+    const inner = sunRadius + 4;
+    const outer = sunRadius + 10 + (index % 2 === 0 ? 3 : 0);
+    const p1 = [round(sunX + Math.cos(angle) * inner), round(sunY + Math.sin(angle) * inner)];
+    const p2 = [round(sunX + Math.cos(angle) * outer), round(sunY + Math.sin(angle) * outer)];
+    elements.push({ kind: 'path', d: `M ${p1[0]} ${p1[1]} L ${p2[0]} ${p2[1]}` });
+  }
+
+  const top = 74;
+  const bottom = HEIGHT - 12;
+  const bands = 4 + complexity;
+  const bandHeight = (bottom - top) / bands;
+
+  for (let band = 0; band < bands; band += 1) {
+    const baseY = top + band * bandHeight;
+    const amplitude = 2.5 + rng.next() * 3.5;
+    const frequency = 0.022 + rng.next() * 0.018;
+    const phase = rng.next() * TWO_PI;
+    const innerHeight = bandHeight * 0.92;
+
+    elements.push({
+      kind: 'path',
+      d: closedWaveBand(baseY, amplitude, frequency, phase, innerHeight),
+    });
+    for (let line = 1; line <= 2; line += 1) {
+      elements.push({
+        kind: 'path',
+        d: pathFromPoints(
+          wavePoints(
+            baseY,
+            amplitude,
+            frequency,
+            phase + line * 0.42,
+            (innerHeight * line) / 3,
+          ),
+        ),
+      });
+    }
+  }
+
+  const fishCount = 2 + complexity;
+  for (let index = 0; index < fishCount; index += 1) {
+    const x = 25 + rng.next() * (WIDTH - 50);
+    const y = top + 18 + rng.next() * (bottom - top - 36);
+    const scale = 0.7 + rng.next() * 0.6;
+    elements.push({ kind: 'path', d: fishPath(x, y, scale) });
+    elements.push({ kind: 'circle', cx: round(x + 4 * scale), cy: round(y - 1), r: 0.7 });
+  }
+
+  return elements;
+}
+
+function skyline(rng: Rng, complexity: number): ColoringElement[] {
+  const elements: ColoringElement[] = [];
+  const ground = HEIGHT - 18;
+  const margin = 10;
+
+  elements.push({ kind: 'circle', cx: 144, cy: 42, r: 13 });
+  elements.push({ kind: 'circle', cx: 144, cy: 42, r: 7 });
+  for (let index = 0; index < 7; index += 1) {
+    elements.push({
+      kind: 'circle',
+      cx: round(18 + rng.next() * 120),
+      cy: round(18 + rng.next() * 48),
+      r: 0.8 + rng.next() * 0.7,
+    });
+  }
+
+  elements.push({
+    kind: 'path',
+    d: `M ${margin} ${ground} Q 45 ${ground - 26} 80 ${ground - 6} Q 118 ${ground - 32} 170 ${ground} Z`,
+  });
+
+  let x = margin;
+  const maxHeight = 58 + complexity * 9;
+  while (x < WIDTH - margin - 12) {
+    const width = 13 + rng.int(0, 13);
+    if (x + width > WIDTH - margin) break;
+    const height = 30 + rng.next() * maxHeight;
+    const y = ground - height;
+    const roof = rng.int(0, 3);
+
+    elements.push({ kind: 'path', d: rectPath(x, y, width, height) });
+    if (roof === 0) {
+      elements.push({
+        kind: 'path',
+        d: `M ${round(x)} ${round(y)} L ${round(x + width / 2)} ${round(y - 8)} L ${round(x + width)} ${round(y)}`,
+      });
+    } else if (roof === 1) {
+      elements.push({
+        kind: 'path',
+        d: `M ${round(x)} ${round(y)} L ${round(x + width / 2)} ${round(y - 4)} L ${round(x + width)} ${round(y)}`,
+      });
+    }
+
+    const windowColumns = Math.max(1, Math.floor((width - 5) / 7));
+    const windowRows = Math.min(4, Math.max(1, Math.floor((height - 8) / 12)));
+    for (let row = 0; row < windowRows; row += 1) {
+      for (let column = 0; column < windowColumns; column += 1) {
+        if (rng.next() < 0.18) continue;
+        const wx = x + 3 + column * ((width - 6) / windowColumns);
+        const wy = y + 5 + row * ((height - 10) / windowRows);
+        elements.push({ kind: 'path', d: rectPath(wx, wy, 3, 4) });
+      }
+    }
+
+    if (height > 70 && rng.next() < 0.35) {
+      elements.push({
+        kind: 'path',
+        d: `M ${round(x + width / 2)} ${round(y)} L ${round(x + width / 2)} ${round(y - 13)}`,
+      });
+      elements.push({ kind: 'circle', cx: round(x + width / 2), cy: round(y - 15), r: 1 });
+    }
+
+    x += width + 2 + rng.int(0, 4);
+  }
+
+  elements.push({
+    kind: 'path',
+    d: `M ${margin} ${ground} L ${WIDTH - margin} ${ground}`,
+  });
+  for (let xLine = 14; xLine < WIDTH - margin; xLine += 14) {
+    elements.push({
+      kind: 'path',
+      d: `M ${xLine} ${ground + 4} L ${xLine + 7} ${ground + 4}`,
+    });
+  }
+
+  return elements;
+}
+
 export function generateColoring(params: ColoringParams): ColoringModel {
   const complexity = Math.max(1, Math.min(5, Math.round(params.complexity)));
   const rng = createRng(`${params.seed}|coloring|${params.theme}|${complexity}`);
@@ -199,7 +503,15 @@ export function generateColoring(params: ColoringParams): ColoringModel {
       ? mandala(rng, complexity)
       : params.theme === 'symmetry'
         ? symmetry(rng, complexity)
-        : geometric(rng, complexity);
+        : params.theme === 'kaleidoscope'
+          ? kaleidoscope(rng, complexity)
+          : params.theme === 'stainedGlass'
+            ? stainedGlass(rng, complexity)
+            : params.theme === 'waves'
+              ? waves(rng, complexity)
+              : params.theme === 'skyline'
+                ? skyline(rng, complexity)
+                : geometric(rng, complexity);
 
   return {
     width: WIDTH,

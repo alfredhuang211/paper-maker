@@ -4,6 +4,7 @@ import { useSeed } from '../../hooks/useSeed';
 import { Field, SegmentedControl } from '../../components/ui/SegmentedControl';
 import { SwitchField } from '../../components/ui/SwitchField';
 import { TextField } from '../../components/ui/TextField';
+import { SelectField } from '../../components/ui/SelectField';
 import { ToolIntro } from '../../components/pattern/AppChrome';
 import { SeedSettings } from '../../components/pattern/SeedSettings';
 import { BatchSettings } from '../../components/pattern/BatchSettings';
@@ -106,18 +107,21 @@ export function ColoringTool() {
         <div className="tool-layout">
           <aside className="panel settings-panel">
             <div className="settings-group">
-              <Field label={t('coloring.theme')}>
-                <SegmentedControl
-                  label={t('coloring.theme')}
-                  value={theme}
-                  options={[
-                    { value: 'symmetry', label: t('coloring.theme.symmetry') },
-                    { value: 'mandala', label: t('coloring.theme.mandala') },
-                    { value: 'geometric', label: t('coloring.theme.geometric') },
-                  ]}
-                  onChange={(value) => setTheme(value as ColoringTheme)}
-                />
-              </Field>
+              <SelectField
+                label={t('coloring.theme')}
+                value={theme}
+                options={[
+                  { value: 'mandala', label: t('coloring.theme.mandala') },
+                  { value: 'kaleidoscope', label: t('coloring.theme.kaleidoscope') },
+                  { value: 'stainedGlass', label: t('coloring.theme.stainedGlass') },
+                  { value: 'waves', label: t('coloring.theme.waves') },
+                  { value: 'skyline', label: t('coloring.theme.skyline') },
+                  { value: 'symmetry', label: t('coloring.theme.symmetry') },
+                  { value: 'geometric', label: t('coloring.theme.geometric') },
+                ]}
+                onChange={(value) => setTheme(value as ColoringTheme)}
+              />
+              <p className="action-note">{t(`coloring.themeHint.${theme}`)}</p>
               <Field label={t('coloring.complexity')} help={t('coloring.complexityHint')}>
                 <SegmentedControl
                   label={t('coloring.complexity')}
