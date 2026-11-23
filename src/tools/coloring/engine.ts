@@ -7,7 +7,11 @@ export type ColoringTheme =
   | 'kaleidoscope'
   | 'stainedGlass'
   | 'waves'
-  | 'skyline';
+  | 'skyline'
+  | 'landscape'
+  | 'botanical'
+  | 'space'
+  | 'underwater';
 export type LineWeight = 'thin' | 'medium' | 'thick';
 
 export interface ColoringParams {
@@ -495,6 +499,302 @@ function skyline(rng: Rng, complexity: number): ColoringElement[] {
   return elements;
 }
 
+
+function localPoint(cx: number, cy: number, radius: number, angle: number): [number, number] {
+  return [round(cx + Math.cos(angle) * radius), round(cy + Math.sin(angle) * radius)];
+}
+
+function localPetal(
+  cx: number,
+  cy: number,
+  inner: number,
+  outer: number,
+  angle: number,
+  spread: number,
+): string {
+  const [x0, y0] = localPoint(cx, cy, inner, angle - spread);
+  const [x1, y1] = localPoint(cx, cy, inner, angle + spread);
+  const [tx, ty] = localPoint(cx, cy, outer, angle);
+  const [c1x, c1y] = localPoint(cx, cy, inner + (outer - inner) * 0.58, angle - spread * 1.8);
+  const [c2x, c2y] = localPoint(cx, cy, inner + (outer - inner) * 0.58, angle + spread * 1.8);
+  return `M ${x0} ${y0} Q ${c1x} ${c1y} ${tx} ${ty} Q ${c2x} ${c2y} ${x1} ${y1} Z`;
+}
+
+function leafPath(x: number, y: number, length: number, angle: number, width: number): string {
+  const [x1, y1] = localPoint(x, y, length, angle);
+  const [nx, ny] = localPoint(0, 0, width, angle + Math.PI / 2);
+  const [mx, my] = localPoint(x, y, length * 0.48, angle);
+  return `M ${x} ${y} Q ${round(mx + nx)} ${round(my + ny)} ${x1} ${y1} Q ${round(mx - nx)} ${round(my - ny)} ${x} ${y} Z`;
+}
+
+function landscape(rng: Rng, complexity: number): ColoringElement[] {
+  const elements: ColoringElement[] = [];
+  const horizon = 190;
+  const sunX = 145;
+  const sunY = 42;
+
+  elements.push({ kind: 'circle', cx: sunX, cy: sunY, r: 13 });
+  for (let index = 0; index < 9; index += 1) {
+    const angle = (index / 9) * TWO_PI;
+    const inner = 18;
+    const outer = 24 + (index % 2 === 0 ? 3 : 0);
+    const p1 = localPoint(sunX, sunY, inner, angle);
+    const p2 = localPoint(sunX, sunY, outer, angle);
+    elements.push({ kind: 'path', d: `M ${p1[0]} ${p1[1]} L ${p2[0]} ${p2[1]}` });
+  }
+
+  const clouds = 2 + Math.floor(complexity / 2);
+  for (let index = 0; index < clouds; index += 1) {
+    const x = 18 + rng.next() * 80;
+    const y = 28 + rng.next() * 38;
+    const width = 18 + rng.next() * 18;
+    elements.push({
+      kind: 'path',
+      d: `M ${round(x)} ${round(y + 8)} Q ${round(x + 2)} ${round(y)} ${round(x + width * 0.35)} ${round(y + 4)} Q ${round(x + width * 0.55)} ${round(y - 5)} ${round(x + width * 0.72)} ${round(y + 2)} Q ${round(x + width)} ${round(y)} ${round(x + width)} ${round(y + 9)} Q ${round(x + width * 0.7)} ${round(y + 14)} ${round(x + width * 0.35)} ${round(y + 10)} Q ${round(x)} ${round(y + 14)} ${round(x)} ${round(y + 8)} Z`,
+    });
+  }
+
+  const layers = 2 + Math.floor(complexity / 2);
+  for (let layer = 0; layer < layers; layer += 1) {
+    const back = layers - layer;
+    const peaks = 3 + Math.floor(complexity / 2);
+    const points: [number, number][] = [[10, horizon]];
+    for (let index = 0; index <= peaks; index += 1) {
+      const x = 10 + ((WIDTH - 20) * index) / peaks;
+      const variation = (rng.next() * 2 - 1) * 12;
+      const y = horizon - 34 - back * 16 - rng.next() * 26 + variation;
+      points.push([round(x), round(Math.max(58, y))]);
+    }
+    points.push([WIDTH - 10, horizon]);
+    elements.push({ kind: 'path', d: polygonPath(points) });
+  }
+
+  elements.push({
+    kind: 'path',
+    d: `M 10 ${horizon} Q 55 ${horizon - 10} 90 ${horizon} Q 130 ${horizon + 10} 170 ${horizon} L 170 220 L 10 220 Z`,
+  });
+  for (let line = 0; line < 4; line += 1) {
+    const y = 202 + line * 5;
+    elements.push({
+      kind: 'path',
+      d: `M 10 ${y} Q 55 ${y - 3} 90 ${y} Q 130 ${y + 3} 170 ${y}`,
+    });
+  }
+
+  const tree = (x: number, height: number) => {
+    const base = horizon - 2;
+    elements.push({
+      kind: 'path',
+      d: `M ${x} ${base} L ${x} ${round(base - height * 0.35)}`,
+    });
+    for (let tier = 0; tier < 3; tier += 1) {
+      const y = base - height * (0.28 + tier * 0.2);
+      const half = height * (0.26 - tier * 0.05);
+      elements.push({
+        kind: 'path',
+        d: `M ${round(x)} ${round(y - height * 0.3)} L ${round(x - half)} ${round(y)} L ${round(x + half)} ${round(y)} Z`,
+      });
+    }
+  };
+  tree(28, 42 + rng.next() * 14);
+  tree(152, 38 + rng.next() * 18);
+  if (complexity >= 4) tree(54, 28 + rng.next() * 10);
+
+  for (let index = 0; index < 2 + complexity; index += 1) {
+    const x = 35 + rng.next() * 90;
+    const y = 40 + rng.next() * 35;
+    elements.push({
+      kind: 'path',
+      d: `M ${round(x)} ${round(y)} Q ${round(x + 4)} ${round(y - 3)} ${round(x + 8)} ${round(y)} M ${round(x + 10)} ${round(y + 1)} Q ${round(x + 14)} ${round(y - 2)} ${round(x + 18)} ${round(y + 1)}`,
+    });
+  }
+
+  return elements;
+}
+
+function botanical(rng: Rng, complexity: number): ColoringElement[] {
+  const elements: ColoringElement[] = [];
+  const ground = 212;
+  const flowers = 4 + complexity;
+  const span = WIDTH - 30;
+
+  elements.push({
+    kind: 'path',
+    d: `M 12 ${ground} Q 50 ${ground - 8} 90 ${ground} Q 130 ${ground + 8} 168 ${ground}`,
+  });
+
+  for (let index = 0; index < flowers; index += 1) {
+    const x = 18 + (span * (index + 0.5)) / flowers + (rng.next() * 2 - 1) * 5;
+    const y = 58 + rng.next() * 86;
+    const radius = 7 + rng.next() * 4;
+    const petals = 5 + Math.floor(complexity * 0.8);
+    const stemControl = x + (rng.next() * 2 - 1) * 12;
+
+    elements.push({
+      kind: 'path',
+      d: `M ${round(x)} ${ground} Q ${round(stemControl)} ${round((ground + y) / 2)} ${round(x)} ${round(y + radius * 0.5)}`,
+    });
+
+    const leaves = 1 + Math.floor(rng.next() * 2);
+    for (let leaf = 0; leaf < leaves; leaf += 1) {
+      const t = 0.3 + leaf * 0.25;
+      const lx = x + (stemControl - x) * t;
+      const ly = ground - (ground - y) * t;
+      const angle = leaf % 2 === 0 ? -0.5 : Math.PI + 0.5;
+      elements.push({
+        kind: 'path',
+        d: leafPath(round(lx), round(ly), 12 + rng.next() * 8, angle, 4 + rng.next() * 2),
+      });
+    }
+
+    for (let petal = 0; petal < petals; petal += 1) {
+      const angle = (petal / petals) * TWO_PI + rng.next() * 0.18;
+      elements.push({
+        kind: 'path',
+        d: localPetal(x, y, radius * 0.72, radius * 1.75, angle, (TWO_PI / petals) * 0.3),
+      });
+    }
+    elements.push({ kind: 'circle', cx: round(x), cy: round(y), r: round(radius * 0.36) });
+  }
+
+  for (let index = 0; index < 8 + complexity * 3; index += 1) {
+    const x = 14 + rng.next() * 152;
+    const y = ground - rng.next() * 14;
+    elements.push({
+      kind: 'path',
+      d: `M ${round(x)} ${round(y)} L ${round(x + (rng.next() * 2 - 1) * 5)} ${round(y - 5 - rng.next() * 5)}`,
+    });
+  }
+
+  return elements;
+}
+
+function space(rng: Rng, complexity: number): ColoringElement[] {
+  const elements: ColoringElement[] = [];
+  const planetX = 90;
+  const planetY = 112;
+  const planetRadius = 32;
+
+  elements.push({ kind: 'circle', cx: planetX, cy: planetY, r: planetRadius });
+  elements.push({ kind: 'circle', cx: planetX, cy: planetY, r: planetRadius * 0.72 });
+  for (let index = 0; index < 3 + complexity; index += 1) {
+    const angle = rng.next() * TWO_PI;
+    const distance = rng.next() * planetRadius * 0.62;
+    const [cx, cy] = localPoint(planetX, planetY, distance, angle);
+    elements.push({ kind: 'circle', cx, cy, r: 2 + rng.next() * 3 });
+  }
+
+  elements.push({
+    kind: 'path',
+    d: `M ${planetX - 58} ${planetY - 8} Q ${planetX} ${planetY - 42} ${planetX + 58} ${planetY - 8}`,
+  });
+  elements.push({
+    kind: 'path',
+    d: `M ${planetX - 58} ${planetY + 8} Q ${planetX} ${planetY + 42} ${planetX + 58} ${planetY + 8}`,
+  });
+
+  const smallPlanets = 3 + Math.floor(complexity / 2);
+  const anchors: [number, number][] = [
+    [32, 42],
+    [150, 48],
+    [156, 174],
+    [32, 190],
+    [118, 28],
+    [52, 160],
+  ];
+  for (let index = 0; index < smallPlanets; index += 1) {
+    const [baseX, baseY] = anchors[index % anchors.length];
+    const cx = baseX + (rng.next() * 2 - 1) * 10;
+    const cy = baseY + (rng.next() * 2 - 1) * 8;
+    const radius = 5 + rng.next() * 6;
+    elements.push({ kind: 'circle', cx: round(cx), cy: round(cy), r: round(radius) });
+    if (index % 2 === 0) {
+      elements.push({
+        kind: 'path',
+        d: `M ${round(cx - radius - 4)} ${round(cy)} Q ${round(cx)} ${round(cy - radius * 0.7)} ${round(cx + radius + 4)} ${round(cy)}`,
+      });
+    }
+  }
+
+  const stars = 18 + complexity * 4;
+  for (let index = 0; index < stars; index += 1) {
+    const x = 12 + rng.next() * (WIDTH - 24);
+    const y = 12 + rng.next() * (HEIGHT - 24);
+    elements.push({ kind: 'circle', cx: round(x), cy: round(y), r: 0.6 + rng.next() * 0.8 });
+  }
+
+  const rocketX = 30 + rng.next() * 15;
+  const rocketY = 198;
+  elements.push({
+    kind: 'path',
+    d: `M ${round(rocketX)} ${rocketY} Q ${round(rocketX + 6)} ${rocketY - 18} ${round(rocketX + 12)} ${rocketY} L ${round(rocketX + 9)} ${rocketY + 3} L ${round(rocketX + 3)} ${rocketY + 3} Z`,
+  });
+  elements.push({
+    kind: 'path',
+    d: `M ${round(rocketX + 3)} ${rocketY + 3} L ${round(rocketX)} ${rocketY + 12} M ${round(rocketX + 9)} ${rocketY + 3} L ${round(rocketX + 12)} ${rocketY + 12}`,
+  });
+  elements.push({ kind: 'circle', cx: round(rocketX + 6), cy: round(rocketY - 5), r: 1.8 });
+
+  return elements;
+}
+
+function underwater(rng: Rng, complexity: number): ColoringElement[] {
+  const elements: ColoringElement[] = [];
+  const floor = 204;
+
+  elements.push({
+    kind: 'path',
+    d: `M 10 ${floor} Q 45 ${floor - 10} 80 ${floor - 2} Q 120 ${floor + 8} 170 ${floor - 4} L 170 222 L 10 222 Z`,
+  });
+
+  const coral = (x: number, y: number, height: number, angle: number, depth: number) => {
+    const [tx, ty] = localPoint(x, y, height, angle);
+    elements.push({ kind: 'path', d: `M ${x} ${y} Q ${round((x + tx) / 2 + 5)} ${round((y + ty) / 2)} ${tx} ${ty}` });
+    if (depth <= 0) return;
+    coral(tx, ty, height * 0.58, angle - 0.55, depth - 1);
+    coral(tx, ty, height * 0.52, angle + 0.45, depth - 1);
+  };
+  coral(25, floor - 2, 24 + complexity * 2, -1.35, 2 + Math.floor(complexity / 2));
+  coral(155, floor - 4, 20 + complexity * 2, -1.8, 2 + Math.floor(complexity / 2));
+
+  for (let index = 0; index < 4 + complexity; index += 1) {
+    const x = 18 + rng.next() * 145;
+    const height = 16 + rng.next() * 24;
+    elements.push({
+      kind: 'path',
+      d: `M ${round(x)} ${floor} Q ${round(x - 5)} ${round(floor - height * 0.5)} ${round(x + 3)} ${round(floor - height)} Q ${round(x + 9)} ${round(floor - height * 0.4)} ${round(x + 6)} ${floor}`,
+    });
+  }
+
+  const fishCount = 3 + complexity;
+  for (let index = 0; index < fishCount; index += 1) {
+    const x = 28 + rng.next() * (WIDTH - 56);
+    const y = 52 + rng.next() * 110;
+    const scale = 0.8 + rng.next() * 0.8;
+    elements.push({ kind: 'path', d: fishPath(x, y, scale) });
+    elements.push({ kind: 'circle', cx: round(x + 4 * scale), cy: round(y - 1), r: 0.7 });
+  }
+
+  for (let index = 0; index < 12 + complexity * 3; index += 1) {
+    elements.push({
+      kind: 'circle',
+      cx: round(14 + rng.next() * (WIDTH - 28)),
+      cy: round(28 + rng.next() * (floor - 48)),
+      r: round(0.8 + rng.next() * 1.8),
+    });
+  }
+
+  for (let index = 0; index < 5 + complexity; index += 1) {
+    const x = 16 + rng.next() * 148;
+    elements.push({
+      kind: 'path',
+      d: `M ${round(x)} ${round(floor + 3)} Q ${round(x - 4)} ${round(floor + 10)} ${round(x + 2)} ${round(floor + 16)}`,
+    });
+  }
+
+  return elements;
+}
+
 export function generateColoring(params: ColoringParams): ColoringModel {
   const complexity = Math.max(1, Math.min(5, Math.round(params.complexity)));
   const rng = createRng(`${params.seed}|coloring|${params.theme}|${complexity}`);
@@ -511,7 +811,15 @@ export function generateColoring(params: ColoringParams): ColoringModel {
               ? waves(rng, complexity)
               : params.theme === 'skyline'
                 ? skyline(rng, complexity)
-                : geometric(rng, complexity);
+                : params.theme === 'landscape'
+                  ? landscape(rng, complexity)
+                  : params.theme === 'botanical'
+                    ? botanical(rng, complexity)
+                    : params.theme === 'space'
+                      ? space(rng, complexity)
+                      : params.theme === 'underwater'
+                        ? underwater(rng, complexity)
+                        : geometric(rng, complexity);
 
   return {
     width: WIDTH,

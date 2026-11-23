@@ -116,6 +116,10 @@ export function ColoringTool() {
                   { value: 'stainedGlass', label: t('coloring.theme.stainedGlass') },
                   { value: 'waves', label: t('coloring.theme.waves') },
                   { value: 'skyline', label: t('coloring.theme.skyline') },
+                  { value: 'landscape', label: t('coloring.theme.landscape') },
+                  { value: 'botanical', label: t('coloring.theme.botanical') },
+                  { value: 'space', label: t('coloring.theme.space') },
+                  { value: 'underwater', label: t('coloring.theme.underwater') },
                   { value: 'symmetry', label: t('coloring.theme.symmetry') },
                   { value: 'geometric', label: t('coloring.theme.geometric') },
                 ]}

@@ -9,6 +9,10 @@ const themes: ColoringTheme[] = [
   'stainedGlass',
   'waves',
   'skyline',
+  'landscape',
+  'botanical',
+  'space',
+  'underwater',
 ];
 
 describe('coloring engine', () => {
